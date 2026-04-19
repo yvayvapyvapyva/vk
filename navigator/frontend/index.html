@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Навигатор - Маршрут</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=YANDEX_API_KEY&lang=ru_RU&suppressMapOpenBlock=true"></script>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge@latest/dist/browser.min.js"></script>
+    <link rel="stylesheet" href="assets/css/menu-module.css">
+    <script src="assets/js/menu-module.js"></script>
+    <style>
+    :root {
+        --bg: #000000;
+        --glass-bg: rgba(15, 15, 15, 0.75);
+        --glass-bg-heavy: rgba(12, 12, 12, 0.82);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-border-bright: rgba(255, 255, 255, 0.2);
+        --glass-highlight: rgba(255, 255, 255, 0.08);
+        --btn-txt: #ffffff;
+        --accent-green: #30D158;
+        --accent-green-glow: rgba(48, 209, 88, 0.35);
+        --accent-blue: #0A84FF;
+        --accent-red: #FF453A;
+        --accent-orange: #FF9F0A;
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.7);
+        --text-tertiary: rgba(255, 255, 255, 0.5);
+        --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+        --shadow-medium: 0 12px 40px rgba(0, 0, 0, 0.4);
+        --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.4);
+        --radius-sm: 14px;
+        --radius-md: 18px;
+        --radius-lg: 24px;
+        --radius-xl: 28px;
+        --radius-full: 100px;
+    }
+    html, body {
+        margin: 0; padding: 0; height: 100%; width: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+        overflow: hidden; background: var(--bg); position: fixed; touch-action: none;
+        color: var(--text-primary); -webkit-font-smoothing: antialiased;
+    }
+    #map { position: absolute; inset: 0; z-index: 1; }
+    [class*="-controls-pane"] { display: none !important; }
+[class*="-gotoymaps"] { display: none !important; }
+[class*="-gototaxi"] { display: none !important; }
+[class*="-map-copyrights-promo"] a { display: none !important; }
+[class*="-copyrights-pane"] { transform: translateY(5px) !important; }
+
+    .loading-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 9999; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        color: white; font-weight: 600; text-align: center; padding: 20px;
+    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    #wakeLockVideo { position: fixed; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -9999; }
+
+    .circle-btn {
+        position: absolute; z-index: 9005;
+        background: var(--glass-bg);
+        width: 52px; height: 52px; border-radius: 50%;
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-primary); cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: var(--shadow-soft), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+    }
+    .circle-btn svg { fill: currentColor; width: 22px; height: 22px; transition: transform 0.2s; }
+    .circle-btn:active {
+        transform: scale(0.92);
+        background: rgba(30, 30, 30, 0.5);
+        box-shadow: var(--shadow-medium);
+    }
+    .circle-btn:active svg { transform: scale(0.9); }
+    .circle-btn.active {
+        background: rgba(48, 209, 88, 0.5);
+        border-color: var(--accent-green);
+        box-shadow: var(--shadow-soft), 0 0 20px var(--accent-green-glow), inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+    }
+    #listBtn { top: calc(12px + env(safe-area-inset-top)); left: 12px; }
+    #locateBtn { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+
+    #telemetryPanel {
+        position: absolute;
+        top: calc(76px + env(safe-area-inset-top)); right: 12px;
+        z-index: 9005;
+        background: var(--glass-bg);
+        border-radius: 50%;
+        border: 0.5px solid var(--glass-border);
+        cursor: pointer;
+        box-shadow: var(--shadow-soft), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 52px; height: 52px; box-sizing: border-box;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 2px; padding: 8px;
+    }
+    #telemetryPanel:active { transform: scale(0.92); background: rgba(30, 30, 30, 0.5); }
+    .tel-item { display: flex; flex-direction: column; align-items: center; }
+    .tel-label { font-size: 8px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tel-value { font-size: 16px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; color: #fff; }
+
+    #hud {
+        position: absolute;
+        bottom: calc(20px + env(safe-area-inset-bottom));
+        left: 12px; right: 12px; z-index: 9000;
+        background: var(--glass-bg-heavy);
+        border-radius: var(--radius-xl); padding: 16px; color: var(--text-primary);
+        border: 0.5px solid var(--glass-border);
+        box-shadow: var(--shadow-strong), inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+        display: none; flex-direction: column; gap: 12px;
+        pointer-events: auto;
+        width: calc(100% - 24px); box-sizing: border-box;
+    }
+    #hud.active { display: flex; }
+    .hud-header { display: flex; align-items: center; gap: 10px; }
+    .hud-index {
+        background: rgba(255, 255, 255, 0.15); color: var(--text-primary);
+        font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 8px;
+        border: 0.5px solid rgba(255, 255, 255, 0.1);
+    }
+    .hud-cmd { font-size: 18px; font-weight: 700; flex: 1; letter-spacing: -0.2px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+    .action-icon-btn {
+        width: 44px; height: 44px; border-radius: var(--radius-sm);
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(48, 209, 88, 0.5);
+        cursor: pointer; flex-shrink: 0;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 12px rgba(48, 209, 88, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+    }
+    .action-icon-btn svg { fill: #fff; width: 22px; height: 22px; }
+    .action-icon-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 8px rgba(48, 209, 88, 0.15), 0 2px 4px rgba(0, 0, 0, 0.2); }
+    .hud-actions {
+        width: 100%; display: flex; padding-top: 12px; gap: 10px;
+        align-items: center; border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+    }
+    .hud-stats { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+    .hud-stats .stat-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .stat-value { font-size: 18px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    .stat-value.in-range { color: var(--accent-green); text-shadow: 0 0 12px var(--accent-green-glow); }
+    .stat-label-unit { font-size: 10px; color: var(--text-secondary); font-weight: 600; }
+
+    .hud-stats .azimuth-compass {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.06); border: 1.5px solid rgba(255, 255, 255, 0.15);
+        position: relative; display: flex; align-items: center; justify-content: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .hud-stats .azimuth-compass.in-range {
+        background: rgba(48, 209, 88, 0.15); border-color: var(--accent-green);
+        box-shadow: 0 0 16px var(--accent-green-glow), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .hud-stats .compass-arrow { width: 2px; height: 26px; margin-top: -13px; }
+    .hud-stats .compass-arrow::before { height: 20px; }
+    .hud-stats .compass-arrow::after {
+        border-left: 3px solid transparent; border-right: 3px solid transparent;
+        border-bottom: 5px solid currentColor; top: -4px;
+    }
+    .hud-stats .compass-center { width: 5px; height: 5px; }
+
+    .compass-arrow {
+        position: absolute; width: 2px; height: 26px;
+        transform-origin: center center; top: 50%;
+        margin-top: -13px; border-radius: 2px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; flex-direction: column; align-items: center;
+    }
+    .compass-arrow::after {
+        content: ''; width: 0; height: 0;
+        border-left: 3px solid transparent; border-right: 3px solid transparent;
+        border-bottom: 5px solid currentColor; position: absolute; top: -4px;
+    }
+    .compass-arrow::before { content: ''; width: 2px; height: 20px; border-radius: 2px; }
+    .compass-arrow-user { color: var(--accent-red); z-index: 2; }
+    .compass-arrow-user::before { background: linear-gradient(to top, var(--accent-red), #FF6961); }
+    .compass-arrow-target { color: var(--accent-blue); z-index: 1; opacity: 0.85; }
+    .compass-arrow-target::before { background: linear-gradient(to top, var(--accent-blue), #5AC8FA); }
+    .compass-center {
+        width: 5px; height: 5px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5); z-index: 3;
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+    #selectBtn {
+        padding: 10px 20px; border-radius: var(--radius-sm);
+        border: none;
+        background: var(--accent-green);
+        color: #fff; font-size: 15px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 16px var(--accent-green-glow);
+    }
+    #selectBtn:active { transform: scale(0.95); box-shadow: 0 2px 8px var(--accent-green-glow); }
+    .nav-arrow-btn {
+        width: 44px; height: 44px; border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(48, 209, 88, 0.5);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; flex-shrink: 0;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 12px rgba(48, 209, 88, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+    }
+    .nav-arrow-btn svg { fill: #fff; width: 22px; height: 22px; }
+    .nav-arrow-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 8px rgba(48, 209, 88, 0.15), 0 2px 4px rgba(0, 0, 0, 0.2); }
+    .nav-arrow-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+    .nav-arrow-btn:disabled:active { transform: none; }
+
+    #pointsList {
+        position: absolute;
+        top: calc(76px + env(safe-area-inset-top));
+        bottom: calc(20px + env(safe-area-inset-bottom) + 160px);
+        left: 12px; width: calc(100% - 24px);
+        background: rgba(15, 15, 15, 0.97);
+        border-radius: var(--radius-lg); border: 0.5px solid var(--glass-border);
+        z-index: 9700; box-shadow: var(--shadow-strong), inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+        pointer-events: auto;
+        display: none; flex-direction: column; overflow: hidden;
+    }
+    #pointsList .header {
+        padding: 14px 16px;
+        border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+        font-weight: 700; font-size: 12px; text-align: center;
+        color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    #pointsListContent {
+        overflow-y: auto; padding: 8px;
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .point-item {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 14px; border-radius: var(--radius-md); color: white;
+        border: 0.5px solid transparent;
+        cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .point-item:active { background: var(--glass-highlight); transform: scale(0.98); }
+    .point-item.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--glass-border-bright);
+    }
+    .point-badge {
+        min-width: 26px; height: 26px; border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        font-size: 12px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        margin-top: 2px; border: 0.5px solid rgba(255, 255, 255, 0.06);
+    }
+    .active .point-badge { background: rgba(255, 255, 255, 0.18); color: #fff; border-color: rgba(255, 255, 255, 0.12); }
+    .point-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .point-name { font-size: 16px; font-weight: 600; line-height: 1.3; color: #fff; word-wrap: break-word; letter-spacing: -0.1px; }
+
+    #commentBlock {
+        display: none; margin-bottom: 8px; padding: 12px;
+        background: rgba(255, 159, 10, 0.15);
+        border-radius: var(--radius-sm); border: 0.5px solid rgba(255, 159, 10, 0.3);
+    }
+    #commentBlock.visible { display: block; }
+    #commentText { font-size: 14px; line-height: 1.5; color: #fff; white-space: pre-wrap; }
+    #closeCommentBtn {
+        width: 22px; height: 22px; border-radius: 7px;
+        background: rgba(255, 159, 10, 0.2);
+        border: 0.5px solid rgba(255, 159, 10, 0.3);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0;
+        transition: all 0.2s;
+    }
+    #closeCommentBtn:active { transform: scale(0.9); background: rgba(255, 159, 10, 0.3); }
+
+    #toast {
+        position: fixed;
+        top: calc(90px + env(safe-area-inset-top)); left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: var(--glass-bg-heavy); color: var(--text-primary);
+        padding: 14px 24px; border-radius: var(--radius-full);
+        font-size: 15px; z-index: 9999;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0;
+        border: 0.5px solid var(--glass-border); font-weight: 600;
+        max-width: 85vw; white-space: pre-wrap;
+        text-align: center; line-height: 1.4; pointer-events: none;
+        box-shadow: var(--shadow-medium), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+        letter-spacing: -0.1px;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { background: rgba(48, 209, 88, 0.85); border-color: rgba(48, 209, 88, 0.5); }
+    #toast.error { background: rgba(255, 69, 58, 0.85); border-color: rgba(255, 69, 58, 0.5); }
+    #toast.info { background: var(--glass-bg-heavy); }
+    </style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay">
+    <div id="loadingText">ЗАГРУЗКА...</div>
+</div>
+
+<video id="wakeLockVideo" playsinline muted loop></video>
+
+<div id="map"></div>
+<button id="listBtn" class="circle-btn">
+    <svg viewBox="0 0 24 24"><path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/></svg>
+</button>
+<button id="mapTypeBtn" class="circle-btn" title="Переключить вид карты" style="top: calc(76px + env(safe-area-inset-top)); left: 12px;">
+    <svg viewBox="0 0 24 24"><path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/></svg>
+</button>
+<button id="locateBtn" class="circle-btn">
+    <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+</button>
+
+<div id="telemetryPanel">
+    <div class="tel-item"><span class="tel-label">КМ/Ч</span><span class="tel-value" id="telSpeed">0</span></div>
+</div>
+
+<div id="hud">
+    <div id="commentBlock">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div id="commentText"></div>
+            <button id="closeCommentBtn">×</button>
+        </div>
+    </div>
+    <div class="hud-header">
+        <span class="hud-index" id="hudIndex">1</span>
+        <div class="hud-cmd" id="hudCmd">Маршрут не выбран</div>
+        <button id="speakBtn" class="action-icon-btn">
+            <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+        </button>
+    </div>
+    <div class="hud-actions">
+        <button id="prevBtn" class="nav-arrow-btn" title="Предыдущая точка">
+            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <div class="hud-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="hudDist">---</span>
+            </div>
+            <div class="azimuth-compass" id="hudCompass">
+                <div class="compass-arrow compass-arrow-user" id="hudUserArrow"></div>
+                <div class="compass-arrow compass-arrow-target" id="hudTargetArrow"></div>
+                <div class="compass-center"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex:1; justify-content:center; align-items:center;">
+            <button id="selectBtn" style="display:none;">Выбрать</button>
+        </div>
+        <button id="nextBtn" class="nav-arrow-btn" title="Следующая точка">
+            <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+    </div>
+</div>
+
+<div id="pointsList">
+    <div class="header">Список точек</div>
+    <div id="pointsListContent"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const COLORS = {
+    Gold: { hex: '#FFD700' }, Blue: { hex: '#007AFF' }, Red: { hex: '#FF3B30' },
+    Fuchsia: { hex: '#AF52DE' }, Orange: { hex: '#FF9500' }, Purple: { hex: '#5856D6' },
+    Cyan: { hex: '#5AC8FA' }, Brown: { hex: '#A2845E' }, Lime: { hex: '#34C759' }
+};
+
+const APP = {
+    map: null, userMarker: null, lastPos: null, lastAz: 0, autoCenter: false, currentSpeed: 0,
+    navPoints: [], navCurrentIndex: 0, navPreviewIndex: -1,
+    navAudio: new Audio(),
+    navConfig: { TRIGGER_DIST: 25, AZ_TOLERANCE: 45, SPEED_THRESHOLD: 2 }
+};
+
+const $ = id => document.getElementById(id);
+
+if (typeof vkBridge !== 'undefined') vkBridge.send('VKWebAppInit');
+
+let toastTimer = null;
+function showToast(text, type = 'info', duration = 2000) {
+    const el = $('toast');
+    el.textContent = text;
+    el.className = `toast ${type} show`;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function getUserLocSvg(azimuth = 0) {
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+            <g transform="rotate(${azimuth}, 20, 20)">
+                <path d="M20,4 L32,34 L20,28 L8,34 Z" fill="#FF3B30" stroke="white" stroke-width="2"/>
+            </g>
+        </svg>`
+    );
+}
+
+function calcAzimuth(p1, p2) {
+    if (!p1 || !p2) return 0;
+    const [la1, lo1] = p1.map(v => v * Math.PI / 180);
+    const [la2, lo2] = p2.map(v => v * Math.PI / 180);
+    const y = Math.sin(lo2 - lo1) * Math.cos(la2);
+    const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(lo2 - lo1);
+    return Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
+}
+
+function initGeolocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                const coords = [pos.coords.latitude, pos.coords.longitude];
+                const speed = (pos.coords.speed || 0) * 3.6;
+                if (APP.lastPos && speed >= APP.navConfig.SPEED_THRESHOLD)
+                    APP.lastAz = calcAzimuth(APP.lastPos, coords);
+                APP.lastPos = coords;
+                APP.currentSpeed = speed;
+
+                if (APP.userMarker) {
+                    APP.userMarker.geometry.setCoordinates(coords);
+                    APP.userMarker.options.set('visible', true);
+                    APP.userMarker.options.set('iconImageHref', getUserLocSvg(APP.lastAz));
+                }
+                $('telSpeed').textContent = Math.round(APP.currentSpeed);
+
+                const previewIndex = APP.navPreviewIndex >= 0 ? APP.navPreviewIndex : APP.navCurrentIndex;
+                if (previewIndex >= 0 && APP.navPoints[previewIndex]) {
+                    const t = APP.navPoints[previewIndex];
+                    let ad = Math.abs(APP.lastAz - t.az) % 360;
+                    if (ad > 180) ad = 360 - ad;
+                    const compass = $('hudCompass');
+                    const userArrow = $('hudUserArrow');
+                    const targetArrow = $('hudTargetArrow');
+                    if (compass && userArrow && targetArrow) {
+                        userArrow.style.transform = `rotate(${APP.lastAz}deg)`;
+                        targetArrow.style.transform = `rotate(${t.az}deg)`;
+                        compass.classList.toggle('in-range', ad <= APP.navConfig.AZ_TOLERANCE);
+                    }
+                }
+
+                if (APP.autoCenter && APP.map) APP.map.setCenter(APP.lastPos);
+                if (APP.navCurrentIndex >= 0 && APP.navPreviewIndex < 0) navCheckTriggers();
+            },
+            (err) => console.warn('Geolocation error:', err),
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+    }
+}
+
+function toggleAutoCenter() {
+    APP.autoCenter = !APP.autoCenter;
+    $('locateBtn').classList.toggle('active', APP.autoCenter);
+    if (APP.autoCenter && APP.lastPos) APP.map.setCenter(APP.lastPos);
+    showToast(APP.autoCenter ? 'Привязка включена' : 'Привязка отключена');
+}
+
+function getNavIconSvg(col, txt, az, isEnd, isCurr = false, hasComm = false) {
+    const s = isEnd ? 34 : 40, c = s / 2;
+    const r = isEnd ? 7 : 9;
+    const txtFill = '#ffffff';
+    const txtStroke = hasComm ? '#FF3B30' : '#000000';
+    const txtStrokeW = hasComm ? 3 : 2;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}">
+        <rect width="${s}" height="${s}" fill="transparent"/>
+        ${isCurr ? `<circle cx="${c}" cy="${c}" r="${r + 3}" fill="none" stroke="#00FF00" stroke-width="2.5" opacity="0.9"/>` : ''}
+        <g transform="rotate(${az},${c},${c})">
+            <polygon points="${c},2 ${c+r},${c} ${c-r},${c}" fill="${col}" stroke="#000000" stroke-width="1" opacity="0.9"/>
+        </g>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="rgba(0,0,0,0.7)"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="${col}" opacity="0.3"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${col}" stroke-width="1.5"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+        <text x="${c}" y="${c + 0.5}" font-size="${isEnd ? 8 : 9}" font-family="Arial" font-weight="900" text-anchor="middle" dominant-baseline="middle" fill="${txtFill}" stroke="${txtStroke}" stroke-width="${txtStrokeW}" paint-order="stroke fill">${txt}</text>
+    </svg>`;
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+
+function getArrowEndSvg(col, az) {
+    const s = 30, c = s / 2;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}">
+        <g transform="rotate(${az},${c},${c})">
+            <polygon points="${c},3 ${c+6},${c+6} ${c},${c+1} ${c-6},${c+6}" fill="${col}" stroke="#000000" stroke-width="1" opacity="0.9"/>
+        </g>
+    </svg>`;
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+
+function removeRouteObjects() {
+    if (!APP.map) return;
+    APP.navPoints.forEach(p => {
+        if (p.placemark) APP.map.geoObjects.remove(p.placemark);
+        if (p.line) APP.map.geoObjects.remove(p.line);
+        if (p.lineOutline) APP.map.geoObjects.remove(p.lineOutline);
+        if (p.lineAccent) APP.map.geoObjects.remove(p.lineAccent);
+        if (p.endPlacemark) APP.map.geoObjects.remove(p.endPlacemark);
+    });
+}
+
+function clearRoute() {
+    removeRouteObjects();
+    APP.navPoints = [];
+    APP.navCurrentIndex = 0;
+    APP.navPreviewIndex = -1;
+    $('hud').classList.remove('active');
+}
+
+function renderRoutePoints() {
+    removeRouteObjects();
+
+    APP.navPoints = APP.navPoints.map((p, i) => {
+        const isCurrent = (i === APP.navCurrentIndex);
+        const isPreview = (i === APP.navPreviewIndex);
+        const isPassed = (i < APP.navCurrentIndex);
+        const isPrevious = (i === APP.navCurrentIndex - 1);
+        const hasComm = p.comm && p.comm.trim() !== '';
+
+        const showPoint = APP.navPreviewIndex >= 0 ? isPreview : (!isPassed || isCurrent || isPrevious);
+        const showPath = !isPassed || isPrevious;
+
+        if (!showPoint) return { ...p, placemark: null, line: null, lineOutline: null, endPlacemark: null, hidden: true };
+
+        const placemark = new ymaps.Placemark([p.lat, p.lon], { pointIndex: i }, {
+            iconLayout: 'default#image',
+            iconImageHref: getNavIconSvg(p.hex, p.id, p.az, false, isCurrent, hasComm),
+            iconImageSize: [40, 40], iconImageOffset: [-20, -20],
+            iconOpacity: isPreview ? 1 : (isPrevious ? 0.5 : (isPassed ? 0.3 : 1)),
+            zIndex: (isCurrent || isPreview) ? 1000 : (isPassed ? 600 : 500)
+        });
+        placemark.events.add('click', e => {
+            const idx = e.get('target').properties.get('pointIndex');
+            if (idx !== APP.navCurrentIndex) showPreview(idx);
+            else closePreview();
+        });
+
+        let line = null, lineOutline = null, lineAccent = null, endPlacemark = null;
+        if (showPath && p.pts && p.pts.length >= 2) {
+            const isPrevOnly = isPrevious && !isCurrent && !isPreview;
+            if (!isPrevOnly) {
+                lineOutline = new ymaps.Polyline(p.pts, {}, {
+                    strokeColor: '#000000', strokeWidth: isCurrent ? 8 : 6, strokeOpacity: 1,
+                    outline: false, zIndex: isCurrent ? 900 : 850
+                });
+                if (isCurrent) {
+                    lineAccent = new ymaps.Polyline(p.pts, {}, {
+                        strokeColor: '#A4E84A', strokeWidth: 6, strokeOpacity: 1,
+                        outline: false, zIndex: 900
+                    });
+                }
+            }
+            line = new ymaps.Polyline(p.pts, {}, {
+                strokeColor: p.hex,
+                strokeWidth: isCurrent ? 4 : 4,
+                strokeOpacity: isCurrent ? 1 : (isPrevious ? 0.5 : 1),
+                outline: false,
+                zIndex: isCurrent ? 902 : 851
+            });
+            if (isPreview) {
+                const lastPts = p.pts;
+                const last = lastPts[lastPts.length - 1];
+                const prev = lastPts.length >= 2 ? lastPts[lastPts.length - 2] : last;
+                const endAz = calcAzimuth(prev, last);
+                endPlacemark = new ymaps.Placemark([last[0], last[1]], {}, {
+                    iconLayout: 'default#image',
+                    iconImageHref: getArrowEndSvg(p.hex, endAz),
+                    iconImageSize: [30, 30], iconImageOffset: [-15, -15],
+                    zIndex: 950
+                });
+            }
+        }
+        if (APP.map) {
+            APP.map.geoObjects.add(placemark);
+            if (lineOutline) APP.map.geoObjects.add(lineOutline);
+            if (lineAccent) APP.map.geoObjects.add(lineAccent);
+            if (line) APP.map.geoObjects.add(line);
+            if (endPlacemark) APP.map.geoObjects.add(endPlacemark);
+        }
+        return { ...p, placemark, line, lineOutline, lineAccent, endPlacemark, hidden: false };
+    });
+    renderPointsList();
+    updateHud();
+}
+
+function updateCompass(t) {
+    const compass = $('hudCompass');
+    const userArrow = $('hudUserArrow');
+    const targetArrow = $('hudTargetArrow');
+    if (userArrow && targetArrow) {
+        userArrow.style.transform = `rotate(${APP.lastAz || 0}deg)`;
+        targetArrow.style.transform = `rotate(${t.az || 0}deg)`;
+    }
+    if (compass) {
+        let ad = Math.abs(APP.lastAz - t.az) % 360;
+        if (ad > 180) ad = 360 - ad;
+        compass.classList.toggle('in-range', ad <= APP.navConfig.AZ_TOLERANCE);
+    }
+}
+
+function updateHud() {
+    const isPreview = APP.navPreviewIndex >= 0;
+    const idx = isPreview ? APP.navPreviewIndex : APP.navCurrentIndex;
+    const t = APP.navPoints[idx];
+    if (!t) return;
+
+    $('hudIndex').textContent = idx + 1;
+    $('hudCmd').textContent = t.cmd;
+    $('speakBtn').onclick = () => playCommand(t.cmd);
+    $('selectBtn').style.display = isPreview ? 'block' : 'none';
+    if (isPreview) $('selectBtn').onclick = () => setTarget(idx);
+    document.querySelector('.hud-stats').style.display = 'flex';
+
+    const targetArrow = $('hudTargetArrow');
+    if (targetArrow) targetArrow.style.transform = `rotate(${t.az}deg)`;
+
+    if (APP.lastPos) {
+        const d = ymaps.coordSystem.geo.getDistance(APP.lastPos, [t.lat, t.lon]);
+        $('hudDist').textContent = `${Math.round(d)}`;
+        $('hudDist').classList.toggle('in-range', d <= APP.navConfig.TRIGGER_DIST);
+        updateCompass(t);
+    } else {
+        $('hudDist').textContent = '---';
+        $('hudDist').classList.remove('in-range');
+        $('hudCompass').classList.remove('in-range');
+    }
+
+    const prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
+    prevBtn.disabled = (idx <= 0);
+    nextBtn.disabled = (idx >= APP.navPoints.length - 1);
+    prevBtn.onclick = () => idx > 0 && showPreview(idx - 1);
+    nextBtn.onclick = () => idx < APP.navPoints.length - 1 && showPreview(idx + 1);
+
+    $('commentText').textContent = t.comm;
+    $('commentBlock').classList.toggle('visible', t.comm && t.comm.trim() !== '');
+}
+
+function updateHudDist(d, ad) {
+    $('hudDist').textContent = `${Math.round(d)}`;
+    $('hudDist').classList.toggle('in-range', d <= APP.navConfig.TRIGGER_DIST);
+    const targetPoint = APP.navPoints[APP.navPreviewIndex >= 0 ? APP.navPreviewIndex : APP.navCurrentIndex];
+    if (targetPoint) updateCompass(targetPoint);
+}
+
+function showPreview(i) {
+    const p = APP.navPoints[i];
+    if (!p) return;
+    $('pointsList').style.display = 'none';
+    APP.navPreviewIndex = i;
+    updateHud();
+    renderRoutePoints();
+
+    if (p.pts && p.pts.length >= 2) {
+        let minLat = Infinity, maxLat = -Infinity;
+        let minLon = Infinity, maxLon = -Infinity;
+
+        for (const pt of p.pts) {
+            if (pt[0] < minLat) minLat = pt[0];
+            if (pt[0] > maxLat) maxLat = pt[0];
+            if (pt[1] < minLon) minLon = pt[1];
+            if (pt[1] > maxLon) maxLon = pt[1];
+        }
+
+        const bounds = [
+            [minLat, minLon],
+            [maxLat, maxLon]
+        ];
+
+        APP.map.setBounds(bounds, {
+            checkZoomRange: true,
+            duration: 1000,
+            zoomMargin: [50, 20, 150, 20]
+        });
+    } else if (p.lat && p.lon) {
+        APP.map.setCenter([p.lat, p.lon], APP.map.getZoom(), { duration: 1000 });
+    }
+}
+
+function updateCurrentPointHud() {
+    if (APP.lastPos && APP.navPoints[APP.navCurrentIndex]) {
+        const t = APP.navPoints[APP.navCurrentIndex];
+        const d = ymaps.coordSystem.geo.getDistance(APP.lastPos, [t.lat, t.lon]);
+        $('hudDist').textContent = `${Math.round(d)}`;
+        $('hudDist').classList.toggle('in-range', d <= APP.navConfig.TRIGGER_DIST);
+        updateCompass(t);
+    }
+}
+
+function setTarget(i) {
+    APP.navCurrentIndex = i;
+    APP.navPreviewIndex = -1;
+    renderRoutePoints();
+    updateHud();
+    $('pointsList').style.display = 'none';
+    updateCurrentPointHud();
+}
+
+function closePreview() {
+    APP.navPreviewIndex = -1;
+    renderRoutePoints();
+    updateHud();
+    updateCurrentPointHud();
+}
+
+function renderPointsList() {
+    const list = $('pointsListContent');
+    if (!list) return;
+    list.innerHTML = APP.navPoints.map((p, i) => {
+        const isPassed = i < APP.navCurrentIndex;
+        const isCurrent = i === APP.navCurrentIndex;
+        const isPreview = i === APP.navPreviewIndex;
+        const isPrevious = i === APP.navCurrentIndex - 1;
+        const hasComm = p.comm && p.comm.trim() !== '';
+        const badgeStyle = isCurrent ? 'background:#00FF00;color:black' :
+                          isPreview ? 'background:rgba(61,160,255,0.6);color:black' :
+                          isPrevious ? 'background:rgba(255,255,255,0.5);color:black' :
+                          isPassed ? 'background:rgba(255,255,255,0.2)' : '';
+        const opacity = isPrevious ? 0.6 : (isPassed && !isPreview ? 0.4 : 1);
+        return `<div class="point-item ${isCurrent || isPreview ? 'active' : ''}" onclick="showPreview(${i});" style="opacity:${opacity}">
+            <div class="point-badge" style="${badgeStyle}">${p.id}</div>
+            <div class="point-content">
+                <div class="point-name" style="display:flex; align-items:center; gap:6px;">
+                    ${p.cmd}
+                    ${hasComm ? '<span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:rgba(255,149,0,0.9); border-radius:50%; color:#fff; font-size:13px; font-weight:800; flex-shrink:0;">i</span>' : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function togglePointsList() {
+    const menu = $('pointsList');
+    menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+    if (menu.style.display === 'flex') renderPointsList();
+}
+
+const ALL_AUDIO_COMMANDS = [
+    "На перекрестке повернем налево", "На перекрестке едем прямо", "На перекрестке повернем направо",
+    "На перекрестке выполним разворот", "На круговом движении первый съезд", "На круговом движении второй съезд",
+    "На круговом движении третий съезд", "На круговом движении четвертый съезд", "На круговом движении выполним разворот",
+    "На регулируемом перекрестке повернем налево", "На регулируемом перекрестке едем прямо", "На регулируемом перекрестке повернем направо",
+    "На регулируемом перекрестке выполним разворот", "На нерегулируемом перекрестке повернем налево", "На нерегулируемом перекрестке едем прямо",
+    "На нерегулируемом перекрестке повернем направо", "На нерегулируемом перекрестке выполним разворот",
+    "Выполним разворот вне перекрестка", "Выполним разворот в ближайшем разрешенном месте", "Найдите место для разворота и развернитесь",
+    "Выполняем разгон до максимальной скорости", "Набираем максимальную скорость на данном участке дороги", "Разгоняемся до максимальной разрешенной скорости",
+    "По моей команде выполним остановку и начало движения на подъеме", "Выполняем остановку и начало движения на подъеме",
+    "Поворачиваем направо", "Поворачиваем налево", "Далее повернем направо", "Далее повернем налево",
+    "На светофоре повернем направо", "На светофоре повернем налево", "Поворачиваем направо к ленте", "Поворачиваем направо на заправку",
+    "Едем в прямом направлении", "Выполняем параллельную парковку и гараж",
+    "Выполняем разворот в ограниченном пространстве", "Выполним разворот в ограниченном пространстве с использованием передачи заднего хода",
+    "Выполняем остановку параллельно краю проезжей части", "Выполняем остановку в ближайшем разрешенном месте",
+    "Начинаем движение", "Как будете готовы начинаем движение",
+    "Выполним разворот в ближайшем разрешенном месте", "Найдите место для остановки и остановитесь", "Остановитесь в ближайшем разрешенном месте"
+];
+
+function getAudioPath(text, form = 'NFC') {
+    if (!text) return null;
+    const normalized = text.normalize(form).toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-`~()]/g, "").trim()
+        .replace(/\s+/g, '_');
+    return `audio/${encodeURIComponent(normalized)}.mp3`;
+}
+
+function getAudioPaths(text) {
+    const nfc = getAudioPath(text, 'NFC');
+    const nfd = getAudioPath(text, 'NFD');
+    return nfc === nfd ? [nfc] : [nfc, nfd];
+}
+
+async function playCommand(text) {
+    const paths = getAudioPaths(text);
+    if (!paths.length) return;
+    APP.navAudio.pause();
+    if ('caches' in window) {
+        try {
+            const cache = await caches.open('route-audio-v1');
+            for (const path of paths) {
+                const cached = await cache.match(path);
+                if (cached) {
+                    APP.navAudio.src = URL.createObjectURL(await cached.blob());
+                    APP.navAudio.play().catch(e => console.error(e));
+                    return;
+                }
+            }
+        } catch (e) { console.warn("Cache error:", e); }
+    }
+    for (const path of paths) {
+        try {
+            const res = await fetch(path);
+            if (res.ok) {
+                APP.navAudio.src = path;
+                APP.navAudio.play().catch(e => console.warn("Audio play failed:", e));
+                return;
+            }
+        } catch (e) { continue; }
+    }
+    console.warn("Audio not found for:", text);
+}
+
+async function preloadAudio() {
+    if (!('caches' in window)) return;
+    const cache = await caches.open('route-audio-v1');
+    const allPaths = ALL_AUDIO_COMMANDS.flatMap(cmd => getAudioPaths(cmd));
+    const uniquePaths = [...new Set(allPaths)];
+    for (const path of uniquePaths) {
+        try {
+            const res = await fetch(path);
+            if (res.ok) await cache.put(path, res);
+        } catch (e) {}
+    }
+}
+
+function navCheckTriggers() {
+    if (APP.navCurrentIndex < 0 || !APP.lastPos || !APP.navPoints[APP.navCurrentIndex]) return;
+    const t = APP.navPoints[APP.navCurrentIndex];
+    const d = ymaps.coordSystem.geo.getDistance(APP.lastPos, [t.lat, t.lon]);
+    let ad = Math.abs(APP.lastAz - t.az) % 360;
+    if (ad > 180) ad = 360 - ad;
+    updateHudDist(d, ad);
+
+    if (d <= APP.navConfig.TRIGGER_DIST && ad <= APP.navConfig.AZ_TOLERANCE) {
+        playCommand(t.cmd);
+        APP.navCurrentIndex++;
+        APP.navPreviewIndex = -1;
+        if (APP.navCurrentIndex < APP.navPoints.length) {
+            renderRoutePoints();
+            updateHud();
+        } else {
+            $('hudCmd').textContent = "ФИНИШ";
+            showToast('Маршрут завершён!', 'success');
+        }
+    }
+}
+
+function loadRouteFromJSON(data) {
+    processRouteData(data);
+}
+
+function processRouteData(data) {
+    startWakeLock();
+    if (!data || !Array.isArray(data)) throw new Error('Неверный формат данных: ожидается массив');
+    if (data.length === 0) throw new Error('Маршрут пуст');
+
+    APP.navPoints = data.map((d, i) => {
+        const pts = d.pts || [];
+        if (!pts || pts.length === 0) {
+            console.warn('Точка ' + i + ' без координат, пропускаем');
+            return null;
+        }
+        return {
+            id: d.id || (i + 1), lat: pts[0]?.[0], lon: pts[0]?.[1],
+            color: d.color, hex: COLORS[d.color]?.hex || '#007AFF',
+            cmd: (d.cmd || d.comm || `Т${i + 1}`).trim(),
+            comm: d.comm || '', pts: pts,
+            az: pts.length >= 2 ? calcAzimuth(pts[0], pts[1]) : 0
+        };
+    }).filter(p => p !== null);
+
+    if (APP.navPoints.length === 0) throw new Error('Нет валидных точек в маршруте');
+
+    APP.navCurrentIndex = 0;
+    APP.navPreviewIndex = -1;
+
+    $('hud').classList.add('active');
+    $('jsonModal').classList.add('hidden');
+    $('loading').classList.add('hidden');
+
+    renderRoutePoints();
+    updateHud();
+
+    if (APP.navPoints.length > 0 && APP.map) {
+        setTimeout(() => {
+            let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+            APP.navPoints.forEach(p => {
+                if (p.lat && p.lon) {
+                    if (p.lat < minLat) minLat = p.lat;
+                    if (p.lat > maxLat) maxLat = p.lat;
+                    if (p.lon < minLon) minLon = p.lon;
+                    if (p.lon > maxLon) maxLon = p.lon;
+                }
+            });
+            if (minLat !== Infinity) {
+                APP.map.setBounds([[minLat, minLon], [maxLat, maxLon]], { zoomMargin: 80 });
+            }
+        }, 100);
+    }
+    preloadAudio();
+}
+
+let wakeLockInterval = null;
+const wakeVideo = document.getElementById('wakeLockVideo');
+let wakeCanvas = null, wakeCanvasStream = null;
+
+function initWakeVideo() {
+    if (!wakeCanvas) {
+        wakeCanvas = document.createElement('canvas');
+        wakeCanvas.width = 1; wakeCanvas.height = 1;
+        const ctx = wakeCanvas.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1, 1);
+        if (wakeCanvas.captureStream) wakeCanvasStream = wakeCanvas.captureStream(30);
+        else if (wakeCanvas.mozCaptureStream) wakeCanvasStream = wakeCanvas.mozCaptureStream(30);
+    }
+}
+
+function initAudioContext() {
+    if (typeof AudioContext !== 'undefined') {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); setTimeout(() => osc.stop(), 100);
+        return audioCtx;
+    }
+    return null;
+}
+
+function startWakeLock() {
+    initWakeVideo();
+    if (wakeVideo && wakeCanvasStream) {
+        wakeVideo.srcObject = wakeCanvasStream;
+        wakeVideo.play().catch(e => console.log('Wake video error:', e));
+    }
+    const audioCtx = initAudioContext();
+    if ('vibrate' in navigator) navigator.vibrate(0);
+    if (wakeLockInterval) clearInterval(wakeLockInterval);
+    wakeLockInterval = setInterval(() => {
+        if (wakeVideo && wakeVideo.paused) wakeVideo.play().catch(e => console.log('Wake video restart error:', e));
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        if (wakeCanvas) {
+            const ctx = wakeCanvas.getContext('2d');
+            ctx.fillStyle = '#' + Math.floor(Math.random()*16777215).toString(16);
+            ctx.fillRect(0, 0, 1, 1);
+        }
+    }, 3000);
+}
+
+function stopWakeLock() {
+    if (wakeLockInterval) { clearInterval(wakeLockInterval); wakeLockInterval = null; }
+    if (wakeVideo) { wakeVideo.pause(); wakeVideo.srcObject = null; }
+}
+
+document.addEventListener('DOMContentLoaded', () => { setTimeout(startWakeLock, 500); });
+
+ymaps.ready(() => {
+    APP.map = new ymaps.Map('map', {
+        center: [56.3399, 43.9332], zoom: 17,
+        type: 'yandex#satellite', controls: []
+    });
+    APP.userMarker = new ymaps.Placemark([0, 0], {}, {
+        iconLayout: 'default#image',
+        iconImageHref: getUserLocSvg(0),
+        iconImageSize: [40, 40], iconImageOffset: [-20, -20],
+        zIndex: 5000, visible: false
+    });
+    APP.map.geoObjects.add(APP.userMarker);
+    initGeolocation();
+
+    $('listBtn').addEventListener('click', togglePointsList);
+    $('locateBtn').addEventListener('click', toggleAutoCenter);
+    $('closeCommentBtn').addEventListener('click', e => {
+        e.stopPropagation();
+        $('commentBlock').classList.remove('visible');
+    });
+
+    let mapTypeIndex = 0;
+    const mapTypes = ['yandex#satellite', 'yandex#map', 'yandex#hybrid'];
+    $('mapTypeBtn').addEventListener('click', () => {
+        mapTypeIndex = (mapTypeIndex + 1) % 3;
+        APP.map.setType(mapTypes[mapTypeIndex]);
+    });
+
+    APP.map.events.add('click', () => {
+        closePreview();
+        $('pointsList').style.display = 'none';
+    });
+
+    MenuModule.init(loadRouteFromJSON);
+    $('loading').classList.add('hidden');
+});
+</script>
+</body>
+</html>
