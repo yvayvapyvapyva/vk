@@ -13,8 +13,8 @@ const MenuModule = {
     routesDescriptions: {}, // { "id-m": { name, description, id, m } }
     _isFetchingRoutes: false,
 
-    // URL Яндекс-функции для загрузки маршрутов
-    API_URL: 'https://functions.yandexcloud.net/d4ejhg45t650h3amrik1',
+    // URL Яндекс-функции для загрузки маршрутов (общий бекенд)
+    API_URL: 'https://functions.yandexcloud.net/d4eUNIFIED_FUNCTION_ID',
 
     /**
      * Универсальное получение параметров URL
@@ -425,7 +425,7 @@ const MenuModule = {
             
             this.hide();
             
-            let url = 'https://functions.yandexcloud.net/d4ejhg45t650h3amrik1';
+            let url = 'https://functions.yandexcloud.net/d4eUNIFIED_FUNCTION_ID';
             const params = [];
             if (routeId) {
                 params.push(`id=${encodeURIComponent(routeId)}`);
