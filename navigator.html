@@ -7,6 +7,7 @@
     <script src="https://api-maps.yandex.ru/2.1/?apikey=YANDEX_API_KEY&lang=ru_RU&suppressMapOpenBlock=true"></script>
     <script src="https://unpkg.com/@vkontakte/vk-bridge@latest/dist/browser.min.js"></script>
     <link rel="stylesheet" href="assets/css/menu-module.css">
+    <script src="assets/js/config.js"></script>
     <script src="assets/js/menu-module.js"></script>
     <style>
     :root {
@@ -354,12 +355,6 @@
 <div id="toast"></div>
 
 <script>
-const COLORS = {
-    Gold: { hex: '#FFD700' }, Blue: { hex: '#007AFF' }, Red: { hex: '#FF3B30' },
-    Fuchsia: { hex: '#AF52DE' }, Orange: { hex: '#FF9500' }, Purple: { hex: '#5856D6' },
-    Cyan: { hex: '#5AC8FA' }, Brown: { hex: '#A2845E' }, Lime: { hex: '#34C759' }
-};
-
 const APP = {
     map: null, userMarker: null, lastPos: null, lastAz: 0, autoCenter: false, currentSpeed: 0,
     navPoints: [], navCurrentIndex: 0, navPreviewIndex: -1,
@@ -435,7 +430,7 @@ function initGeolocation() {
                 if (APP.autoCenter && APP.map) APP.map.setCenter(APP.lastPos);
                 if (APP.navCurrentIndex >= 0 && APP.navPreviewIndex < 0) navCheckTriggers();
             },
-            (err) => console.warn('Geolocation error:', err),
+            () => {},
             { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
         );
     }
@@ -769,23 +764,23 @@ async function playCommand(text) {
                 const cached = await cache.match(path);
                 if (cached) {
                     APP.navAudio.src = URL.createObjectURL(await cached.blob());
-                    APP.navAudio.play().catch(e => console.error(e));
+                    APP.navAudio.play().catch(() => {});
                     return;
                 }
             }
-        } catch (e) { console.warn("Cache error:", e); }
+        } catch (e) { }
     }
     for (const path of paths) {
         try {
             const res = await fetch(path);
             if (res.ok) {
                 APP.navAudio.src = path;
-                APP.navAudio.play().catch(e => console.warn("Audio play failed:", e));
+                APP.navAudio.play().catch(() => {});
                 return;
             }
         } catch (e) { continue; }
     }
-    console.warn("Audio not found for:", text);
+    
 }
 
 async function preloadAudio() {
@@ -835,7 +830,7 @@ function processRouteData(data) {
     APP.navPoints = data.map((d, i) => {
         const pts = d.pts || [];
         if (!pts || pts.length === 0) {
-            console.warn('Точка ' + i + ' без координат, пропускаем');
+            
             return null;
         }
         return {
@@ -910,12 +905,12 @@ function startWakeLock() {
     initWakeVideo();
     if (wakeVideo && wakeCanvasStream) {
         wakeVideo.srcObject = wakeCanvasStream;
-        wakeVideo.play().catch(e => console.log('Wake video error:', e));
+        wakeVideo.play().catch(() => {});
     }
     const audioCtx = initAudioContext();
     if (wakeLockInterval) clearInterval(wakeLockInterval);
     wakeLockInterval = setInterval(() => {
-        if (wakeVideo && wakeVideo.paused) wakeVideo.play().catch(e => console.log('Wake video restart error:', e));
+        if (wakeVideo && wakeVideo.paused) wakeVideo.play().catch(() => {});
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         if (wakeCanvas) {
             const ctx = wakeCanvas.getContext('2d');
