@@ -5,7 +5,11 @@ import base64
 import ydb
 import ydb.iam
 import json
-from notifier import send_report
+try:
+    from notifier import send_report
+except ImportError:
+    def send_report(user_id, m_val, i_val=None, report_type='navigator'):
+        pass
 
 endpoint = os.getenv("YDB_ENDPOINT")
 database = os.getenv("YDB_DATABASE")
