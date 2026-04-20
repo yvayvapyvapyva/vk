@@ -913,7 +913,6 @@ function startWakeLock() {
         wakeVideo.play().catch(e => console.log('Wake video error:', e));
     }
     const audioCtx = initAudioContext();
-    if ('vibrate' in navigator) navigator.vibrate(0);
     if (wakeLockInterval) clearInterval(wakeLockInterval);
     wakeLockInterval = setInterval(() => {
         if (wakeVideo && wakeVideo.paused) wakeVideo.play().catch(e => console.log('Wake video restart error:', e));

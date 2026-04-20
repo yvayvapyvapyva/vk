@@ -11,19 +11,20 @@ endpoint = os.getenv("YDB_ENDPOINT")
 database = os.getenv("YDB_DATABASE")
 VK_APP_SECRET = os.getenv("VK_APP_SECRET")
 
-driver_config = ydb.DriverConfig(
-    endpoint,
-    database,
-    credentials=ydb.iam.MetadataUrlCredentials()
-)
-driver = ydb.Driver(driver_config)
+pool = None
 
-try:
-    driver.wait(timeout=10)
-except Exception as e:
-    raise
-
-pool = ydb.SessionPool(driver)
+def get_pool():
+    global pool
+    if pool is None:
+        driver_config = ydb.DriverConfig(
+            endpoint,
+            database,
+            credentials=ydb.iam.MetadataUrlCredentials()
+        )
+        driver = ydb.Driver(driver_config)
+        driver.wait(timeout=10)
+        pool = ydb.SessionPool(driver)
+    return pool
 
 
 def verify_vk_signature(params):
@@ -173,6 +174,8 @@ def create_response(status_code, body, is_public=False):
     headers = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Origin, Accept',
     }
     if is_public:
         headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -199,7 +202,7 @@ def handler(event, context):
     # Публичные экшены (без VK подписи)
     if action == 'list_routes':
         try:
-            result_sets = pool.retry_operation_sync(execute_list_routes_public)
+            result_sets = get_pool().retry_operation_sync(execute_list_routes_public)
             routes = []
             for row in result_sets[0].rows:
                 routes.append({
@@ -229,7 +232,7 @@ def handler(event, context):
             send_report(id_val, m_val, i_val, 'navigator')
 
         try:
-            result_sets = pool.retry_operation_sync(execute_get_route, id_param=id_val, m_param=m_val)
+            result_sets = get_pool().retry_operation_sync(execute_get_route, id_param=id_val, m_param=m_val)
 
             if not result_sets[0].rows:
                 return create_response(404, {'error': 'not_found'})
@@ -270,7 +273,7 @@ def handler(event, context):
     try:
         # Список маршрутов пользователя
         if action == 'list':
-            result = pool.retry_operation_sync(execute_list_user_routes, id_param=user_id)
+            result = get_pool().retry_operation_sync(execute_list_user_routes, id_param=user_id)
             routes = [row.m for row in result[0].rows]
             return create_response(200, {'routes': routes})
 
@@ -279,7 +282,7 @@ def handler(event, context):
             if not m_val:
                 return create_response(400, {'error': 'missing_route_name'})
             
-            result = pool.retry_operation_sync(execute_get_route, id_param=user_id, m_param=m_val)
+            result = get_pool().retry_operation_sync(execute_get_route, id_param=user_id, m_param=m_val)
             if not result[0].rows:
                 return create_response(404, {'error': 'route_not_found'})
 
@@ -297,7 +300,7 @@ def handler(event, context):
         elif action == 'delete':
             if not m_val:
                 return create_response(400, {'error': 'missing_route_name'})
-            pool.retry_operation_sync(execute_delete_route, id_param=user_id, m_param=m_val)
+            get_pool().retry_operation_sync(execute_delete_route, id_param=user_id, m_param=m_val)
             return create_response(200, {'status': 'deleted'})
 
         # Сохранение маршрута
@@ -313,7 +316,7 @@ def handler(event, context):
                 return create_response(400, {'error': 'invalid_json_body', 'details': str(je)})
 
             try:
-                pool.retry_operation_sync(execute_upsert_route, id_param=user_id, m_param=m_val, json_data=new_json)
+                get_pool().retry_operation_sync(execute_upsert_route, id_param=user_id, m_param=m_val, json_data=new_json)
             except Exception as se:
                 raise
 
@@ -323,7 +326,7 @@ def handler(event, context):
         elif action == 'get_meta':
             if not m_val:
                 return create_response(400, {'error': 'missing_route_name'})
-            result = pool.retry_operation_sync(execute_get_route_meta, id_param=user_id, m_param=m_val)
+            result = get_pool().retry_operation_sync(execute_get_route_meta, id_param=user_id, m_param=m_val)
             if not result[0].rows:
                 return create_response(404, {'error': 'route_not_found'})
             row = result[0].rows[0]
@@ -348,7 +351,7 @@ def handler(event, context):
             visible = body_data.get('visible', False)
 
             try:
-                pool.retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible)
+                get_pool().retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible)
             except Exception as se:
                 raise
 
