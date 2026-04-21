@@ -724,16 +724,36 @@ const openCreateRouteModal = () => {
     setTimeout(() => $('newRouteNameInput').focus(), 100);
 };
 
+const generateSlug = (text) => {
+    const ruToEn = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
+        'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+        'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '',
+        'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    return text.toLowerCase()
+        .split('')
+        .map(char => ruToEn[char] || char)
+        .join('')
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'route';
+};
+
 const handleCreateNew = async () => {
-    const n = $('newRouteNameInput').value.replace(/\s/g, '_');
-    if(!n) return;
+    const name = $('newRouteNameInput').value.trim();
+    if(!name) return;
+    
+    const slug = generateSlug(name);
+    if(!slug) return;
     
     toggleM('createRouteModal');
     
     try {
-        await callYcFunction('save', { m: n }, []);
+        await callYcFunction('save', { m: slug }, []);
+        await callYcFunction('save_meta', { m: slug }, { name: name, description: '', visible: false, category: '' });
         refreshFileList(); 
-        loadRoute(n); 
+        loadRoute(slug); 
         showToast("Маршрут создан", 'success'); 
     } catch (e) {
         
@@ -855,22 +875,26 @@ const saveRouteMeta = async () => {
     const description = $('routeDescription').value.trim();
     const visible = $('routeVisible').checked;
     const category = $('routeCategory').value.trim();
-    const newLinkName = $('routeLinkName').value.trim().replace(/\s/g, '_');
+    
+    const currentSlug = settingsRouteName;
+    const currentMeta = currentRouteMeta;
+    const nameChanged = name !== currentMeta.name;
+    const newSlug = nameChanged ? generateSlug(name) : currentSlug;
 
-    if (!newLinkName) { showToast('Введите имя маршрута в ссылке', 'error'); return; }
+    if (!newSlug) { showToast('Введите имя маршрута', 'error'); return; }
 
     try {
-        if (newLinkName !== settingsRouteName) {
+        if (newSlug !== currentSlug) {
             showToast('Переименование...', 'info');
-            const getResult = await callYcFunction('get', { m: settingsRouteName });
+            const getResult = await callYcFunction('get_protected', { m: currentSlug });
             if (getResult.error) { showToast('Ошибка загрузки данных', 'error'); return; }
             const content = getResult.data || [];
-            await callYcFunction('save', { m: newLinkName }, content);
-            await callYcFunction('save_meta', { m: newLinkName }, { name, description, visible, category });
-            await callYcFunction('delete', { m: settingsRouteName });
-            if (curRoute === settingsRouteName) curRoute = newLinkName;
-            settingsRouteName = newLinkName;
-            $('routeLinkName').value = newLinkName;
+            await callYcFunction('save', { m: newSlug }, content);
+            await callYcFunction('save_meta', { m: newSlug }, { name, description, visible, category });
+            await callYcFunction('delete', { m: currentSlug });
+            if (curRoute === currentSlug) curRoute = newSlug;
+            settingsRouteName = newSlug;
+            $('routeLinkName').value = newSlug;
             await refreshFileList();
         } else {
             await callYcFunction('save_meta', { m: settingsRouteName }, { name, description, visible, category });
