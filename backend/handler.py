@@ -168,7 +168,7 @@ def execute_get_route_meta(session, id_param, m_param):
     query = """
         DECLARE $id AS Utf8;
         DECLARE $m AS Utf8;
-        SELECT name, description, visible FROM roads WHERE id = $id AND m = $m;
+        SELECT name, description, visible, category FROM roads WHERE id = $id AND m = $m;
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(
