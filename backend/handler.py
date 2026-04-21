@@ -66,10 +66,10 @@ def verify_vk_signature(params):
 def execute_list_routes_public(session):
     """Публичный список маршрутов (только visible=true)"""
     query = """
-        SELECT DISTINCT id, m, name, description
+        SELECT DISTINCT id, m, name, category, description
         FROM roads
         WHERE visible = true AND name IS NOT NULL
-        ORDER BY name;
+        ORDER BY category, name;
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(prepared_query, commit_tx=True)
@@ -79,7 +79,7 @@ def execute_list_user_routes(session, id_param):
     """Список маршрутов пользователя"""
     query = """
         DECLARE $id AS Utf8;
-        SELECT m FROM roads WHERE id = $id;
+        SELECT m, category FROM roads WHERE id = $id;
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(prepared_query, {'$id': str(id_param)}, commit_tx=True)
@@ -115,13 +115,14 @@ def execute_delete_route(session, id_param, m_param):
     )
 
 
-def execute_upsert_route(session, id_param, m_param, json_data):
+def execute_upsert_route(session, id_param, m_param, json_data, category=''):
     """Создать/обновить маршрут"""
     query = """
         DECLARE $id AS Utf8;
         DECLARE $m AS Utf8;
         DECLARE $json AS Json;
-        UPSERT INTO roads (id, m, json) VALUES ($id, $m, $json);
+        DECLARE $category AS Utf8;
+        UPSERT INTO roads (id, m, json, category) VALUES ($id, $m, $json, $category);
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(
@@ -129,13 +130,14 @@ def execute_upsert_route(session, id_param, m_param, json_data):
         {
             '$id': str(id_param),
             '$m': str(m_param),
-            '$json': json.dumps(json_data) if not isinstance(json_data, str) else json_data
+            '$json': json.dumps(json_data) if not isinstance(json_data, str) else json_data,
+            '$category': str(category)
         },
         commit_tx=True
     )
 
 
-def execute_update_route_meta(session, id_param, m_param, name, description, visible):
+def execute_update_route_meta(session, id_param, m_param, name, description, visible, category=''):
     """Обновить метаданные маршрута"""
     query = """
         DECLARE $id AS Utf8;
@@ -143,7 +145,8 @@ def execute_update_route_meta(session, id_param, m_param, name, description, vis
         DECLARE $name AS Utf8;
         DECLARE $description AS Utf8;
         DECLARE $visible AS Bool;
-        UPDATE roads SET name = $name, description = $description, visible = $visible WHERE id = $id AND m = $m;
+        DECLARE $category AS Utf8;
+        UPDATE roads SET name = $name, description = $description, visible = $visible, category = $category WHERE id = $id AND m = $m;
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(
@@ -153,6 +156,7 @@ def execute_update_route_meta(session, id_param, m_param, name, description, vis
             '$m': str(m_param),
             '$name': str(name),
             '$description': str(description),
+            '$category': str(category),
             '$visible': bool(visible)
         },
         commit_tx=True
@@ -213,6 +217,7 @@ def handler(event, context):
                     'id': row.id,
                     'm': row.m,
                     'name': row.name,
+                    'category': row.category if hasattr(row, 'category') and row.category else '',
                     'description': row.description if hasattr(row, 'description') and row.description else ''
                 })
             return create_response(200, routes, is_public=True)
@@ -278,7 +283,7 @@ def handler(event, context):
         # Список маршрутов пользователя
         if action == 'list':
             result = get_pool().retry_operation_sync(execute_list_user_routes, id_param=user_id)
-            routes = [row.m for row in result[0].rows]
+            routes = [{'m': row.m, 'category': row.category if hasattr(row, 'category') and row.category else ''} for row in result[0].rows]
             return create_response(200, {'routes': routes})
 
         # Получение маршрута (защищенное)
@@ -315,12 +320,14 @@ def handler(event, context):
             body_str = event.get('body', '{}')
 
             try:
-                new_json = json.loads(body_str) if body_str else []
+                body_data = json.loads(body_str) if body_str else {}
+                new_json = body_data.get('data', [])
+                route_category = body_data.get('category', '')
             except Exception as je:
                 return create_response(400, {'error': 'invalid_json_body', 'details': str(je)})
 
             try:
-                get_pool().retry_operation_sync(execute_upsert_route, id_param=user_id, m_param=m_val, json_data=new_json)
+                get_pool().retry_operation_sync(execute_upsert_route, id_param=user_id, m_param=m_val, json_data=new_json, category=route_category)
             except Exception as se:
                 raise
 
@@ -336,6 +343,7 @@ def handler(event, context):
             row = result[0].rows[0]
             return create_response(200, {
                 'name': row.name if hasattr(row, 'name') else '',
+                'category': row.category if hasattr(row, 'category') and row.category else '',
                 'description': row.description if hasattr(row, 'description') else '',
                 'visible': row.visible if hasattr(row, 'visible') else False
             })
@@ -353,9 +361,10 @@ def handler(event, context):
             name = body_data.get('name', '')
             description = body_data.get('description', '')
             visible = body_data.get('visible', False)
+            category = body_data.get('category', '')
 
             try:
-                get_pool().retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible)
+                get_pool().retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible, category=category)
             except Exception as se:
                 raise
 

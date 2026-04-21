@@ -325,3 +325,24 @@
     color: rgba(255, 255, 255, 0.85);
     white-space: pre-wrap;
 }
+
+/* Категории */
+.category-folder { width: 100%; }
+.category-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-radius: 14px;
+    background: rgba(0, 122, 255, 0.15);
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    cursor: pointer; transition: all 0.2s;
+    width: 100%; box-sizing: border-box;
+}
+.category-header:active { transform: scale(0.98); background: rgba(0, 122, 255, 0.25); }
+.category-icon { font-size: 18px; flex-shrink: 0; }
+.category-name { flex: 1; font-size: 16px; font-weight: 600; color: #fff; text-align: left; }
+.category-count { font-size: 12px; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; }
+.category-arrow { font-size: 20px; color: rgba(255,255,255,0.4); }
+.category-title { display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin-bottom: 8px; background: rgba(0,122,255,0.1); border-radius: 12px; border: 1px solid rgba(0,122,255,0.2); }
+.category-title .category-icon { font-size: 20px; }
+.category-title .category-name { font-size: 18px; font-weight: 700; }
+.back-btn { display: flex; align-items: center; gap: 6px; padding: 10px 14px; margin-bottom: 12px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; box-sizing: border-box; }
+.back-btn:active { transform: scale(0.98); background: rgba(255,255,255,0.12); }

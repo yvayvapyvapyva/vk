@@ -200,6 +200,8 @@ body {
 <div class="input-wrapper" style="padding:3px;border-radius:12px;margin-bottom:8px;"><input type="text" id="routeDisplayName" placeholder="Введите имя маршрута" style="width:100%;padding:10px;border:none;font-size:16px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;"></div>
 <div style="font-size:12px;color:#8b8f99;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Описание маршрута</div>
 <div class="input-wrapper" style="padding:3px;border-radius:12px;margin-bottom:8px;"><textarea id="routeDescription" placeholder="Введите описание маршрута" rows="2" style="width:100%;padding:10px;border:none;font-size:16px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;resize:none;min-height:56px;"></textarea></div>
+<div style="font-size:12px;color:#8b8f99;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Категория</div>
+<div class="input-wrapper" style="padding:3px;border-radius:12px;margin-bottom:8px;"><input type="text" id="routeCategory" placeholder="Категория (необязательно)" style="width:100%;padding:10px;border:none;font-size:16px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;"></div>
 <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:linear-gradient(180deg, rgba(25,25,30,0.7), rgba(15,15,18,0.6));border:1px solid rgba(255,255,255,0.25);">
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;">
 <input type="checkbox" id="routeVisible" style="width:20px;height:20px;accent-color:#34C759;cursor:pointer;">
@@ -814,30 +816,32 @@ const shareActiveRoute = () => {
 };
 
 let settingsRouteName = null;
-let currentRouteMeta = { name: '', description: '', visible: false };
+let currentRouteMeta = { name: '', description: '', visible: false, category: '' };
 
 const openRouteSettings = async (routeName) => {
     settingsRouteName = routeName;
     $('settingsRouteTitle').textContent = `Маршрут "${routeName}"`;
-    // Загружаем метаданные маршрута
     try {
         const meta = await callYcFunction('get_meta', { m: routeName });
         currentRouteMeta = {
             name: meta.name || '',
             description: meta.description || '',
-            visible: meta.visible !== undefined ? meta.visible : false
+            visible: meta.visible !== undefined ? meta.visible : false,
+            category: meta.category || ''
         };
         $('routeDisplayName').value = currentRouteMeta.name;
         $('routeDescription').value = currentRouteMeta.description;
         $('routeLinkName').value = settingsRouteName;
         $('routeVisible').checked = currentRouteMeta.visible;
+        $('routeCategory').value = currentRouteMeta.category;
     } catch (e) {
         
-        currentRouteMeta = { name: '', description: '', visible: false };
+        currentRouteMeta = { name: '', description: '', visible: false, category: '' };
         $('routeDisplayName').value = '';
         $('routeDescription').value = '';
         $('routeLinkName').value = settingsRouteName;
         $('routeVisible').checked = false;
+        $('routeCategory').value = '';
     }
     toggleM('settingsRouteModal');
 };
@@ -847,34 +851,28 @@ const saveRouteMeta = async () => {
     const name = $('routeDisplayName').value.trim();
     const description = $('routeDescription').value.trim();
     const visible = $('routeVisible').checked;
+    const category = $('routeCategory').value.trim();
     const newLinkName = $('routeLinkName').value.trim().replace(/\s/g, '_');
 
     if (!newLinkName) { showToast('Введите имя маршрута в ссылке', 'error'); return; }
 
     try {
-        // Если имя в ссылке изменилось — нужно создать новый маршрут и удалить старый
         if (newLinkName !== settingsRouteName) {
             showToast('Переименование...', 'info');
-            // Получаем данные текущего маршрута
             const getResult = await callYcFunction('get', { m: settingsRouteName });
             if (getResult.error) { showToast('Ошибка загрузки данных', 'error'); return; }
             const content = getResult.data || [];
-            // Сохраняем с новым именем
             await callYcFunction('save', { m: newLinkName }, content);
-            // Сохраняем метаданные для нового имени
-            await callYcFunction('save_meta', { m: newLinkName }, { name, description, visible });
-            // Удаляем старый маршрут
+            await callYcFunction('save_meta', { m: newLinkName }, { name, description, visible, category });
             await callYcFunction('delete', { m: settingsRouteName });
-            // Обновляем текущий маршрут
             if (curRoute === settingsRouteName) curRoute = newLinkName;
             settingsRouteName = newLinkName;
             $('routeLinkName').value = newLinkName;
             await refreshFileList();
         } else {
-            // Просто сохраняем метаданные
-            await callYcFunction('save_meta', { m: settingsRouteName }, { name, description, visible });
+            await callYcFunction('save_meta', { m: settingsRouteName }, { name, description, visible, category });
         }
-        currentRouteMeta = { name, description, visible };
+        currentRouteMeta = { name, description, visible, category };
         showToast('Метаданные сохранены', 'success');
     } catch (e) {
         

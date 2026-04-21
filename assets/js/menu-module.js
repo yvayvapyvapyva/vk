@@ -146,29 +146,53 @@ const MenuModule = {
 
         const data = await response.json();
 
-        // Преобразуем в формат { "id-m": { id, m, name, description } }
-        const routes = {};
+        // Группировка по категориям
+        const routesByCategory = {};
+        const routesFlat = {};
+        
         for (const route of data) {
+            const category = route.category || 'Без категории';
             const key = `${route.id}-${route.m}`;
-            routes[key] = {
+            
+            // Сохраняем для flat доступа
+            routesFlat[key] = {
                 id: route.id,
                 m: route.m,
                 name: route.name,
+                category: category,
                 description: route.description || ''
             };
+            
+            // Группируем по категориям
+            if (!routesByCategory[category]) {
+                routesByCategory[category] = [];
+            }
+            routesByCategory[category].push({ key, ...routesFlat[key] });
         }
 
-        return routes;
+        // Сортируем категории и маршруты
+        const sortedCategories = Object.keys(routesByCategory).sort();
+        const sortedRoutesByCategory = {};
+        for (const cat of sortedCategories) {
+            sortedRoutesByCategory[cat] = routesByCategory[cat].sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        this.routesDescriptions = routesFlat;
+        this.routesByCategory = sortedRoutesByCategory;
+        
+        return sortedRoutesByCategory;
     },
 
     /**
-     * Построение HTML списка маршрутов
+     * Построение HTML списка маршрутов с группировкой по категориям
      */
-    _buildRoutesList(routes) {
+    _buildRoutesList(routesByCategory) {
         const container = document.getElementById('routesListContainer');
         if (!container) return;
 
-        if (!routes || Object.keys(routes).length === 0) {
+        const categories = Object.keys(routesByCategory);
+        
+        if (categories.length === 0) {
             container.innerHTML = `
                 <div style="text-align:center; padding:20px; color:rgba(255,255,255,0.5); font-size:14px;">
                     Нет доступных маршрутов
@@ -177,22 +201,78 @@ const MenuModule = {
             return;
         }
 
-        // Сохраняем описания для быстрого доступа
-        this.routesDescriptions = routes;
-
         let html = '';
-        for (const [routeKey, routeData] of Object.entries(routes)) {
-            const hasDesc = routeData.description && routeData.description.trim() !== '';
-            html += `<button class="route-item" data-route="${routeKey}">
-                <span class="route-name">${routeData.name}</span>
-                <span class="route-id">${routeData.id}-${routeData.m}</span>
-                ${hasDesc ? `<button class="route-info-btn" data-route="${routeKey}" title="Описание маршрута">
-                    <span>i</span>
-                </button>` : ''}
-            </button>`;
+        
+        for (const category of categories) {
+            const routes = routesByCategory[category];
+            if (!routes || routes.length === 0) continue;
+            
+            // Папка категории
+            html += `
+                <div class="category-folder" onclick="MenuModule.openCategory('${this._escape(category)}')">
+                    <div class="category-header">
+                        <span class="category-icon">📁</span>
+                        <span class="category-name">${category}</span>
+                        <span class="category-count">${routes.length}</span>
+                        <span class="category-arrow">›</span>
+                    </div>
+                </div>
+            `;
         }
 
         container.innerHTML = html;
+    },
+
+    /**
+     * Показать маршруты внутри категории
+     */
+    openCategory(categoryName) {
+        const routes = this.routesByCategory[categoryName];
+        if (!routes) return;
+        
+        const container = document.getElementById('routesListContainer');
+        
+        let html = `
+            <button class="back-btn" onclick="MenuModule.showCategories()">
+                <span>‹</span> Назад
+            </button>
+            <div class="category-title">
+                <span class="category-icon">📁</span>
+                <span>${categoryName}</span>
+            </div>
+        `;
+        
+        for (const route of routes) {
+            const routeKey = route.key;
+            const hasDesc = route.description && route.description.trim() !== '';
+            html += `<button class="route-item" onclick="MenuModule.selectRoute('${route.key}')">
+                <span class="route-name">${route.name}</span>
+                ${hasDesc ? `<span class="route-info-btn" onclick="event.stopPropagation();MenuModule._showRouteDescription('${routeKey}')">i</span>` : ''}
+            </button>`;
+        }
+        
+        container.innerHTML = html;
+    },
+
+    /**
+     * Показать все категории
+     */
+    showCategories() {
+        this._buildRoutesList(this.routesByCategory);
+    },
+
+    /**
+     * Выбрать маршрут
+     */
+    selectRoute(routeKey) {
+        const route = this.routesDescriptions[routeKey];
+        if (route) {
+            this.loadRouteByName(route.m, route.id);
+        }
+    },
+
+    _escape(str) {
+        return str.replace(/'/g, "\\'");
     },
 
     /**
