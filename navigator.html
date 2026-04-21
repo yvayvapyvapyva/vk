@@ -375,6 +375,30 @@ function showToast(text, type = 'info', duration = 2000) {
     toastTimer = setTimeout(() => el.classList.remove('show'), duration);
 }
 
+let pressTimer = null;
+const speedEl = document.getElementById('telSpeed');
+if (speedEl) {
+    const startLongPress = () => {
+        pressTimer = setTimeout(() => {
+            const userId = window.USER_ID || localStorage.getItem('user_id');
+            if (!userId || userId === 'default') return;
+            if (navigator.vibrate) navigator.vibrate(200);
+            window.location.href = 'editor.html';
+        }, 3000);
+    };
+    const cancelLongPress = () => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    };
+    speedEl.addEventListener('mousedown', startLongPress);
+    speedEl.addEventListener('mouseup', cancelLongPress);
+    speedEl.addEventListener('mouseleave', cancelLongPress);
+    speedEl.addEventListener('touchstart', startLongPress);
+    speedEl.addEventListener('touchend', cancelLongPress);
+}
+
 function getUserLocSvg(azimuth = 0) {
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(
         `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
