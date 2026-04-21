@@ -1,7 +1,7 @@
 /**
  * Menu Button Module
  * Модуль кнопки меню для загрузки маршрутов
- * Загружает список маршрутов из Яндекс-функции с кэшированием в localStorage
+ * Загружает список маршрутов из Яндекс-функции
  * Возвращает JSON данные маршрута, а не название
  */
 
@@ -45,8 +45,8 @@ const MenuModule = {
     },
 
     /**
-     * Парсинг ввода в формате "id-название" или просто "название"
-     * @returns {{id: string|null, name: string}}
+     * Парсинг ввода в формате "id-название"
+     * @returns {{id: string, name: string}}
      */
     parseRouteInput(input) {
         const trimmed = input.trim();
@@ -55,11 +55,9 @@ const MenuModule = {
         if (dashIndex > 0) {
             const id = trimmed.substring(0, dashIndex).trim();
             const name = trimmed.substring(dashIndex + 1).trim();
-            if (id && name) {
-                return { id, name };
-            }
+            return { id, name };
         }
-        return { id: null, name: trimmed };
+        return { id: '', name: trimmed };
     },
 
     // Инициализация
@@ -547,11 +545,10 @@ const MenuModule = {
         
         // Передаём JSON данные в навигатор
         if (typeof this.callback === 'function') {
-            this.callback(jsonData);
+this.callback(jsonData);
         }
         this.isLoaded = true;
         this.hide();
-        this.updateInput();
     },
     
     // Публичный метод для загрузки JSON напрямую (для будущих источников)
@@ -570,18 +567,9 @@ const MenuModule = {
     show() {
         const modal = document.getElementById('jsonModal');
         if (modal) modal.classList.remove('hidden');
-        this.updateInput();
         this._hideRouteDescription();
     },
     
-    // Обновить поле ввода текущим маршрутом
-    updateInput() {
-        const input = document.getElementById('routeInput');
-        if (input) {
-            input.value = this.currentRoute || '';
-        }
-    },
-
     showSpinner() {
         const spinner = document.getElementById('loadingSpinner');
         if (spinner) spinner.classList.add('active');
