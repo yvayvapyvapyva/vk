@@ -257,68 +257,12 @@ body {
     };
   }
 
-  function getTokenFromUrl() {
-    return localStorage.getItem('github_token') || null;
-  }
-
-  function saveTokenToStorage(token) {
-    localStorage.setItem('github_token', token);
-  }
-
-  function clearTokenFromStorage() {
-    localStorage.removeItem('github_token');
-  }
-
-  function buildInitFileContent(extra = {}) {
-    const vkUser = getVKUser();
-    const fullName = vkUser
-      ? `${vkUser.first_name || ''}${vkUser.last_name ? ` ${vkUser.last_name}` : ''}`.trim()
-      : 'Unknown';
-    const screenName = vkUser && vkUser.screen_name ? vkUser.screen_name : '-';
-    const userId = vkUser && vkUser.id ? String(vkUser.id) : '-';
-    const createdAt = new Intl.DateTimeFormat('ru-RU', {
-      timeZone: 'Europe/Moscow',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(new Date());
-    return [
-      `👤 User: ${fullName} (${screenName})`,
-      `🆔 VK ID: ${userId}`,
-      `📱 Platform: VK Mini Apps`,
-      `🕒 Created At (Moscow): ${createdAt}`
-    ].join('\n');
-  }
-
-  async function apiRequest(token, url, method = 'GET', body = null) {
-    if (!token) return null;
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `token ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: body ? JSON.stringify(body) : null
-    });
-    if (!res.ok) return null;
-    return res.status === 204 ? true : res.json();
-  }
-
   global.AppShared = {
     byId,
     round6,
     getVKBridge,
     getVKUser,
-    getUserIdentity,
-    getTokenFromUrl,
-    saveTokenToStorage,
-    clearTokenFromStorage,
-    buildInitFileContent,
-    apiRequest
+    getUserIdentity
   };
 })(window);
 </script>
