@@ -8,6 +8,7 @@
     <script src="https://api-maps.yandex.ru/2.1/?apikey=YANDEX_API_KEY&lang=ru_RU&suppressMapOpenBlock=true"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="assets/js/config.js"></script>
+    <script src="assets/js/vk-user.js"></script>
     <style>
 :root {
   --app-bg: #0f1115;
@@ -218,62 +219,19 @@ body {
   const byId = (id) => document.getElementById(id);
   const round6 = (n) => Math.round(n * 1e6) / 1e6;
 
-  function getVKBridge() {
-    return global.vkBridge || null;
-  }
-
-  function getVKUser() {
-    return global.vkUser || null;
-  }
-
-  function getUserIdentity() {
-    // Пробуем получить из URL параметров VK Mini Apps
-    const urlParams = new URLSearchParams(window.location.search);
-    const vkUserIdFromUrl = urlParams.get('vk_user_id');
-    
-    const vkUser = getVKUser();
-    
-    // Приоритет: VK из bridge > VK из URL > guest
-    if (vkUser && vkUser.id) {
-      return {
-        id: String(vkUser.id),
-        name: vkUser.first_name + (vkUser.last_name ? " " + vkUser.last_name : ""),
-        username: vkUser.screen_name ? `vk.com/${vkUser.screen_name}` : ""
-      };
-    }
-    
-    if (vkUserIdFromUrl) {
-      return {
-        id: vkUserIdFromUrl,
-        name: "VK User",
-        username: ""
-      };
-    }
-    
-    return {
-      id: "default",
-      name: "Guest",
-      username: ""
-    };
-  }
-
   global.AppShared = {
     byId,
-    round6,
-    getVKBridge,
-    getVKUser,
-    getUserIdentity
+    round6
   };
 })(window);
 </script>
 <script>
-const { byId, round6, getVKBridge, getUserIdentity, getTokenFromUrl, saveTokenToStorage, clearTokenFromStorage, buildInitFileContent, apiRequest } = window.AppShared;
+const { byId, round6 } = window.AppShared;
 const $ = byId;
 const f6 = round6;
-const vk = getVKBridge();
-const identity = getUserIdentity();
-const USER_ID = identity.id;
-const USER_NAME = identity.name;
+const vk = typeof vkBridge !== 'undefined' ? vkBridge : null;
+const USER_ID = VK.getId();
+const USER_NAME = VK.getName();
 const USER_UNAME = identity.username;
 // Сразу устанавливаем window.USER_ID для использования в callYcFunction
 window.USER_ID = USER_ID;
