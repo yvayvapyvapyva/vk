@@ -1263,15 +1263,33 @@ html, body {
     justify-content: space-between;
     pointer-events: none;
     gap: 10px;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: nowrap;
 }
 
-.top-right-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: auto;
+#layerSwitchBtn {
+    position: absolute;
+    top: calc(76px + env(safe-area-inset-top));
+    left: 15px;
+}
+
+#listPointsBtn {
+    position: absolute;
+    top: 10px;
+    left: 15px;
+    z-index: 9010;
+}
+
+#gpsModeBtn {
+    position: absolute;
+    top: calc(76px + env(safe-area-inset-top));
+    right: 15px;
+}
+
+#settingsBtn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
 }
 
 .btn-top {
@@ -1312,10 +1330,10 @@ html, body {
 }
 
 #listPointsBtn {
-    max-width: calc(100vw - 100px);
-    overflow: hidden;
-    flex-shrink: 1;
-    min-width: 0;
+    position: absolute;
+    top: 10px;
+    left: 15px;
+    z-index: 9010;
 }
 
 #routeLabelText {
