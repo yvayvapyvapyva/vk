@@ -209,7 +209,7 @@ const MenuModule = {
             
             // Папка категории
             html += `
-                <div class="category-folder" onclick="MenuModule.openCategory('${this._escape(category)}')">
+                <div class="category-folder" onclick="event.stopPropagation();MenuModule.openCategory('${this._escape(category)}')">
                     <div class="category-header">
                         <span class="category-icon">📁</span>
                         <span class="category-name">${category}</span>
@@ -233,7 +233,7 @@ const MenuModule = {
         const container = document.getElementById('routesListContainer');
         
         let html = `
-            <button class="back-btn" onclick="MenuModule.showCategories()">
+            <button class="back-btn" onclick="event.stopPropagation();MenuModule.showCategories()">
                 <span>‹</span> Назад
             </button>
             <div class="category-title">
@@ -245,7 +245,7 @@ const MenuModule = {
         for (const route of routes) {
             const routeKey = route.key;
             const hasDesc = route.description && route.description.trim() !== '';
-            html += `<button class="route-item" onclick="MenuModule.selectRoute('${route.key}')">
+            html += `<button class="route-item" onclick="event.stopPropagation();MenuModule.selectRoute('${route.key}')">
                 <span class="route-name">${route.name}</span>
                 ${hasDesc ? `<span class="route-info-btn" onclick="event.stopPropagation();MenuModule._showRouteDescription('${routeKey}')">i</span>` : ''}
             </button>`;
