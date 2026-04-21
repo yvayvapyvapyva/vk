@@ -1238,12 +1238,12 @@ function openCreatePointModal() {
 async function handleModalSave() {
     if (modalMode === 'list' || modalMode === 'edit') {
         await saveGist();
+    }
+    toggleM('pointsOrderModal');
+    if (modalMode === 'list' || modalMode === 'edit') {
         showToast("Изменения сохранены", "success");
     }
-    if (modalMode === 'list') toggleM('pointsOrderModal');
-    else if (modalMode === 'edit') toggleM('pointsOrderModal');
     else if (modalMode === 'create') {
-        toggleM('pointsOrderModal');
         isAdd = true;
         points.forEach(p => { if (p.endPlacemark) p.endPlacemark.options.set('interactive', true); });
         $('addMarkerBtn').classList.add('active');
