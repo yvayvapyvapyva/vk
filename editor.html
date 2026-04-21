@@ -832,7 +832,7 @@ const deleteActiveRoute = async () => {
 };
 const shareActiveRoute = () => {
     if(!curRoute) return;
-    const userId = window.vkUser?.id || window.USER_ID || 'default';
+    const userId = window.vkUser?.id;
     const link = `https://vk.com/app54507759#m=${userId}-${curRoute}`;
     navigator.clipboard.writeText(link).then(() => { showToast("Ссылка скопирована", 'success'); }).catch(() => {
         const el = document.createElement('textarea');
@@ -935,7 +935,7 @@ const executeDeleteRoute = async () => {
 };
 const shareRouteFromSettings = () => {
     if (!settingsRouteName) return;
-    const userId = window.vkUser?.id || window.USER_ID || 'default';
+    const userId = window.vkUser?.id;
     const link = `https://vk.com/app54507759#m=${userId}-${settingsRouteName}`;
     navigator.clipboard.writeText(link).then(() => { showToast("Ссылка скопирована", 'success'); }).catch(() => {
         const el = document.createElement('textarea');
@@ -950,12 +950,12 @@ const shareRouteFromSettings = () => {
 const openInNavigator = () => {
     const routeKey = settingsRouteName || curRoute;
     if (!routeKey) return;
-    const userId = window.vkUser?.id || window.USER_ID || 'default';
+    const userId = window.vkUser?.id;
     window.location.href = `navigator.html#m=${userId}-${routeKey}`;
 };
 const launchNavigatorWithCurrentRoute = () => { 
     if(!curRoute) return; 
-    const userId = window.vkUser?.id || window.USER_ID || 'default';
+    const userId = window.vkUser?.id;
     window.location.href = `https://vk.com/app54507759#m=${userId}-${curRoute}`; 
 };
 const saveRouteLocally = () => {
