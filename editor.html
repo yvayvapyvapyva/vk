@@ -665,7 +665,8 @@ const renderSettingsFileList = () => {
     if (settingsRouteFiles.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#8b8f99;font-size:15px;">У вас пока нет маршрутов.<br>Создайте первый маршрут.</div>';
     } else {
-        settingsRouteFiles.forEach(routeName => {
+        settingsRouteFiles.forEach(route => {
+            const routeName = typeof route === 'string' ? route : (route.m || '');
             const item = document.createElement('div');
             item.className = 'route-list-item' + (routeName === curRoute ? ' active' : '');
             
