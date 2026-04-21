@@ -744,7 +744,7 @@ const handleCreateNew = async () => {
 const loadRoute = async (routeName) => {
     showToast("Загрузка...", "info");
     try {
-        const result = await callYcFunction('get', { m: routeName });
+        const result = await callYcFunction('get_protected', { m: routeName });
         if (result.error) {
             showToast(result.error, 'error');
             return;
