@@ -996,10 +996,8 @@ async function stopGpsRecordMode() {
     $('gpsModeBtn').classList.remove('active');
     $('addText').textContent = 'Добавить новую точку';
     pushHistorySnapshot();
-    const prevMode = modalMode;
     modalMode = 'gps';
     await saveGist();
-    modalMode = prevMode;
     showToast("Изменения сохранены", "success");
 }
 
@@ -1070,7 +1068,6 @@ function recalculateIds() {
 function confirmDeletePoint(p, isSingle) {
     pendingDeletePoint = p;
     pendingDeleteSingle = isSingle;
-    toggleM('pointsOrderModal');
     setTimeout(() => toggleM('confirmDeletePointModal'), 100);
 }
 async function executeDeletePoint() {
@@ -1083,9 +1080,6 @@ async function executeDeletePoint() {
     updateSaveState();
     await saveGist();
     showToast("Изменения сохранены", "success");
-    if (!pendingDeleteSingle) {
-        openPointsOrderModal();
-    }
     showToast("Точка удалена", "info");
     pendingDeletePoint = null;
 }
@@ -1192,7 +1186,6 @@ async function saveGist() {
             if (topSaveBtn) topSaveBtn.textContent = 'Сохранено';
             setTimeout(() => {
                 btn.classList.remove('saved');
-                if (modalMode === 'list') toggleM('pointsOrderModal');
                 updateSaveState();
             }, 900);
         } else {
