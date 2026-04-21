@@ -336,15 +336,7 @@ const MenuModule = {
         const html = `
             <div id="jsonModal">
                 <div class="modal-sheet">
-                    <div class="modal-title">Загрузка маршрута</div>
-                    <div class="modal-input-row">
-                        <input type="text" id="routeInput" class="modal-input" placeholder="ID-название">
-                        <button id="loadRouteBtn" class="modal-btn-icon" title="Загрузить">
-                            <svg viewBox="0 0 24 24" width="22" height="22">
-                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
-                            </svg>
-                        </button>
-                    </div>
+                    <div class="modal-title">Выбор маршрута</div>
                     <div id="routesListContainer" class="routes-list">
                         <div style="text-align:center; padding:20px; color:rgba(255,255,255,0.5); font-size:14px;">
                             Загрузка списка маршрутов...
@@ -366,32 +358,6 @@ const MenuModule = {
         } else {
             document.body.insertAdjacentHTML('afterbegin', html);
         }
-
-        // Обработчик загрузки
-        document.getElementById('loadRouteBtn').addEventListener('click', () => {
-            const inputValue = document.getElementById('routeInput').value.trim();
-            if (!inputValue) {
-                if (typeof showToast === 'function') {
-                    showToast('Введите ID и название маршрута', 'error');
-                }
-                return;
-            }
-            const { id, name } = this.parseRouteInput(inputValue);
-            if (!name) {
-                if (typeof showToast === 'function') {
-                    showToast('Введите название маршрута', 'error');
-                }
-                return;
-            }
-            this.loadRouteByName(name, id);
-        });
-
-        // Обработчик Enter
-        document.getElementById('routeInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('loadRouteBtn').click();
-            }
-        });
 
         // Обработчик кликов по списку маршрутов (делегирование событий)
         document.getElementById('routesListContainer').addEventListener('click', (e) => {
