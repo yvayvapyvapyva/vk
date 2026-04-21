@@ -48,10 +48,10 @@
     }
     #map { position: absolute; inset: 0; z-index: 1; }
     [class*="-controls-pane"] { display: none !important; }
-[class*="-gotoymaps"] { display: none !important; }
-[class*="-gototaxi"] { display: none !important; }
-[class*="-map-copyrights-promo"] a { display: none !important; }
-[class*="-copyrights-pane"] { transform: translateY(5px) !important; }
+    [class*="-gotoymaps"] { display: none !important; }
+    [class*="-gototaxi"] { display: none !important; }
+    [class*="-map-copyrights-promo"] a { display: none !important; }
+    [class*="-copyrights-pane"] { transform: translateY(5px) !important; }
 
     .loading-overlay {
         position: fixed; inset: 0;
@@ -385,7 +385,6 @@ const speedEl = document.getElementById('telSpeed');
 if (speedEl) {
     const startLongPress = () => {
         pressTimer = setTimeout(() => {
-            if (navigator.vibrate) navigator.vibrate(200);
             window.location.href = 'editor.html';
         }, 3000);
     };
