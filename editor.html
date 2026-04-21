@@ -376,19 +376,12 @@ async function callYcFunction(action, params = {}, bodyData = null) {
     }
     
     const response = await fetch(url.toString(), options);
-    const responseText = await response.text();
     
     if (!response.ok) {
-        console.error('callYcFunction error:', response.status, responseText);
-        throw new Error(`HTTP ${response.status}: ${responseText}`);
+        throw new Error(`HTTP ${response.status}`);
     }
     
-    try {
-        return JSON.parse(responseText);
-    } catch (e) {
-        console.error('JSON parse error:', responseText);
-        throw new Error('Invalid JSON: ' + responseText);
-    }
+    return await response.json();
 }
 function getNavIconSvg(col, txt, az, isEnd = false, isCurr = false, hasComm = false) {
     const s = isEnd ? 34 : 40, c = s / 2;
@@ -755,18 +748,14 @@ const handleCreateNew = async () => {
     toggleM('createRouteModal');
     
     try {
-        const result = await callYcFunction('save', { m: slug }, []);
-        if (result.error) {
-            showToast(result.error, 'error');
-            return;
-        }
+        await callYcFunction('save', { m: slug }, []);
         await callYcFunction('save_meta', { m: slug }, { name: name, description: '', visible: false, category: '' });
         refreshFileList(); 
         loadRoute(slug); 
         showToast("Маршрут создан", 'success'); 
     } catch (e) {
         
-        showToast("Ошибка создания: " + e.message, 'error');
+        showToast("Ошибка создания", 'error');
     }
 };
 
