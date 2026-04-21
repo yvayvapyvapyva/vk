@@ -230,6 +230,7 @@ const { byId, round6 } = window.AppShared;
 const $ = byId;
 const f6 = round6;
 const vk = typeof vkBridge !== 'undefined' ? vkBridge : null;
+if (vk) VK.init();
 const USER_ID = VK.getId();
 const USER_NAME = VK.getName();
 const USER_UNAME = window.vkUser?.screen_name ? `vk.com/${window.vkUser.screen_name}` : '';
