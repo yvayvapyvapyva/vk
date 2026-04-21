@@ -1271,6 +1271,8 @@ html, body {
     position: absolute;
     top: calc(76px + env(safe-area-inset-top));
     left: 15px;
+    z-index: 9010;
+    pointer-events: auto;
 }
 
 #listPointsBtn {
