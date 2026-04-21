@@ -232,8 +232,7 @@ const f6 = round6;
 const vk = typeof vkBridge !== 'undefined' ? vkBridge : null;
 const USER_ID = VK.getId();
 const USER_NAME = VK.getName();
-const USER_UNAME = identity.username;
-// Сразу устанавливаем window.USER_ID для использования в callYcFunction
+const USER_UNAME = window.vkUser?.screen_name ? `vk.com/${window.vkUser.screen_name}` : '';
 window.USER_ID = USER_ID;
 window.USER_NAME = USER_NAME;
 window.USER_UNAME = USER_UNAME;
