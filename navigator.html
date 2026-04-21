@@ -380,8 +380,6 @@ const speedEl = document.getElementById('telSpeed');
 if (speedEl) {
     const startLongPress = () => {
         pressTimer = setTimeout(() => {
-            const userId = window.USER_ID || localStorage.getItem('user_id');
-            if (!userId || userId === 'default') return;
             if (navigator.vibrate) navigator.vibrate(200);
             window.location.href = 'editor.html';
         }, 3000);
