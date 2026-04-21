@@ -381,25 +381,11 @@ function showToast(text, type = 'info', duration = 2000) {
     toastTimer = setTimeout(() => el.classList.remove('show'), duration);
 }
 
-let pressTimer = null;
 const speedEl = document.getElementById('telSpeed');
 if (speedEl) {
-    const startLongPress = () => {
-        pressTimer = setTimeout(() => {
-            window.location.href = 'editor.html';
-        }, 3000);
-    };
-    const cancelLongPress = () => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-    };
-    speedEl.addEventListener('mousedown', startLongPress);
-    speedEl.addEventListener('mouseup', cancelLongPress);
-    speedEl.addEventListener('mouseleave', cancelLongPress);
-    speedEl.addEventListener('touchstart', startLongPress);
-    speedEl.addEventListener('touchend', cancelLongPress);
+    speedEl.addEventListener('dblclick', () => {
+        window.location.href = 'editor.html';
+    });
 }
 
 function getUserLocSvg(azimuth = 0) {
