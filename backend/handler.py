@@ -311,8 +311,9 @@ def handler(event, context):
 
     # Если действие требует подписи (редактор) - проверяем обязательно
     if action in ('list', 'save', 'delete', 'get_meta', 'save_meta'):
+        logging.info(f"action={action}, verified_user_id={verified_user_id}, id_val={id_val}, err={err}, m_val={m_val}")
         if not verified_user_id:
-            return create_response(401, {'error': 'invalid_vk_signature', 'message': err or 'signature required'})
+            return create_response(401, {'error': 'invalid_vk_signature', 'message': err or 'signature required', 'id_val': id_val})
 
     user_id = verified_user_id or id_val
 
