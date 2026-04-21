@@ -996,7 +996,10 @@ async function stopGpsRecordMode() {
     $('gpsModeBtn').classList.remove('active');
     $('addText').textContent = 'Добавить новую точку';
     pushHistorySnapshot();
+    const prevMode = modalMode;
+    modalMode = 'gps';
     await saveGist();
+    modalMode = prevMode;
     showToast("Изменения сохранены", "success");
 }
 
