@@ -163,6 +163,43 @@ def execute_update_route_meta(session, id_param, m_param, name, description, vis
     )
 
 
+def execute_rename_route(session, id_param, old_m_param, new_m_param, name, description, visible, category=''):
+    """Переименовать маршрут (скопировать с новым m и удалить старый)"""
+    # Сначала UPSERT с новым m (это также скопирует данные json)
+    query_upsert = """
+        DECLARE $id AS Utf8;
+        DECLARE $old_m AS Utf8;
+        DECLARE $new_m AS Utf8;
+        DECLARE $name AS Utf8;
+        DECLARE $description AS Utf8;
+        DECLARE $visible AS Bool;
+        DECLARE $category AS Utf8;
+        
+        $json = (
+            SELECT json FROM roads WHERE id = $id AND m = $old_m
+        );
+        
+        UPSERT INTO roads (id, m, json, name, description, visible, category)
+        VALUES ($id, $new_m, $json, $name, $description, $visible, $category);
+        
+        DELETE FROM roads WHERE id = $id AND m = $old_m;
+    """
+    prepared_query = session.prepare(query_upsert)
+    return session.transaction().execute(
+        prepared_query,
+        {
+            '$id': str(id_param),
+            '$old_m': str(old_m_param),
+            '$new_m': str(new_m_param),
+            '$name': str(name),
+            '$description': str(description),
+            '$visible': bool(visible),
+            '$category': str(category)
+        },
+        commit_tx=True
+    )
+
+
 def execute_get_route_meta(session, id_param, m_param):
     """Получить метаданные маршрута"""
     query = """
@@ -362,9 +399,15 @@ def handler(event, context):
             description = body_data.get('description', '')
             visible = body_data.get('visible', False)
             category = body_data.get('category', '')
+            new_m = body_data.get('new_m', '')
 
             try:
-                get_pool().retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible, category=category)
+                if new_m and new_m != m_val:
+                    # Переименование маршрута
+                    get_pool().retry_operation_sync(execute_rename_route, id_param=user_id, old_m_param=m_val, new_m_param=new_m, name=name, description=description, visible=visible, category=category)
+                    return create_response(200, {'status': 'meta_saved', 'new_m': new_m})
+                else:
+                    get_pool().retry_operation_sync(execute_update_route_meta, id_param=user_id, m_param=m_val, name=name, description=description, visible=visible, category=category)
             except Exception as se:
                 raise
 

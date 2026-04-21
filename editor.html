@@ -194,8 +194,6 @@ body {
 <div id="settingsModal" class="modal settings-sheet" onclick="if(event.target===this) toggleM('settingsModal')"><div class="modal-content"><div class="settings-header"><div style="flex:1; min-width:0;"><span id="settingsTitle">Ваши маршруты</span></div><button class="close-circle" onclick="toggleM('settingsModal')">✕</button></div><div class="editor-section settings-body"><div id="routesList"></div></div><button class="settings-tool-btn settings-tool-btn-green" onclick="openCreateRouteModal()" style="width:100%;flex-shrink:0;">➕ Создать новый маршрут</button></div></div>
 <div id="createRouteModal" class="modal" onclick="if(event.target===this) toggleM('createRouteModal')"><div class="modal-content" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:400px;width:90%;padding:24px;border-radius:24px;background:linear-gradient(180deg, rgba(35,35,42,0.98), rgba(22,22,28,0.98));border:1px solid rgba(255,255,255,0.2);box-shadow:0 20px 60px rgba(0,0,0,0.5);"><h3 style="margin:0 0 20px;font-size:22px;font-weight:700;text-align:center;">Новый маршрут</h3><div class="input-wrapper" style="margin-bottom:20px;padding:4px;border-radius:14px;"><input type="text" id="newRouteNameInput" placeholder="Название маршрута" style="width:100%;padding:14px;border:none;font-size:17px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;"></div><div style="display:flex;gap:12px;"><button class="btn-action" onclick="toggleM('createRouteModal')" style="flex:1;background:rgba(80,80,90,0.8);padding:16px;font-size:15px;font-weight:600;">Отмена</button><button class="btn-action" onclick="handleCreateNew()" style="flex:1;background:linear-gradient(180deg, rgba(52,199,89,0.9), rgba(40,160,70,0.85));padding:16px;font-size:15px;font-weight:600;">Создать</button></div></div></div>
 <div id="settingsRouteModal" class="modal" onclick="if(event.target===this) toggleM('settingsRouteModal')"><div class="modal-content" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:95vw;width:95%;max-height:90vh;border-radius:24px;background:linear-gradient(180deg, rgba(35,35,42,0.98), rgba(22,22,28,0.98));border:1px solid rgba(255,255,255,0.2);box-shadow:0 20px 60px rgba(0,0,0,0.5);display:flex;flex-direction:column;font-size:16px;"><h3 id="settingsRouteTitle" style="margin:0 0 12px;font-size:18px;font-weight:700;text-align:center;flex-shrink:0;">Настройки маршрута</h3><div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding:0 20px 14px;flex:1;min-height:0;"><div style="margin-bottom:10px;">
-<div style="font-size:12px;color:#8b8f99;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Имя маршрута в ссылке</div>
-<div class="input-wrapper" style="padding:3px;border-radius:12px;margin-bottom:8px;"><input type="text" id="routeLinkName" placeholder="Имя в ссылке (без пробелов)" style="width:100%;padding:10px;border:none;font-size:16px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;"></div>
 <div style="font-size:12px;color:#8b8f99;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Отображаемое имя</div>
 <div class="input-wrapper" style="padding:3px;border-radius:12px;margin-bottom:8px;"><input type="text" id="routeDisplayName" placeholder="Введите имя маршрута" style="width:100%;padding:10px;border:none;font-size:16px;outline:none;background:transparent;color:#f5f7fa;font-family:inherit;"></div>
 <div style="font-size:12px;color:#8b8f99;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Описание маршрута</div>
@@ -854,7 +852,6 @@ const openRouteSettings = async (routeName) => {
         };
         $('routeDisplayName').value = currentRouteMeta.name;
         $('routeDescription').value = currentRouteMeta.description;
-        $('routeLinkName').value = settingsRouteName;
         $('routeVisible').checked = currentRouteMeta.visible;
         $('routeCategory').value = currentRouteMeta.category;
     } catch (e) {
@@ -862,7 +859,6 @@ const openRouteSettings = async (routeName) => {
         currentRouteMeta = { name: '', description: '', visible: false, category: '' };
         $('routeDisplayName').value = '';
         $('routeDescription').value = '';
-        $('routeLinkName').value = settingsRouteName;
         $('routeVisible').checked = false;
         $('routeCategory').value = '';
     }
@@ -878,8 +874,18 @@ const saveRouteMeta = async () => {
 
     if (!name) { showToast('Введите имя маршрута', 'error'); return; }
 
+    const newSlug = generateSlug(name);
+    const isRenaming = newSlug !== settingsRouteName;
+
     try {
-        await callYcFunction('save_meta', { m: settingsRouteName }, { name, description, visible, category });
+        const result = await callYcFunction('save_meta', { m: settingsRouteName }, { name, description, visible, category, new_m: newSlug });
+        
+        if (result.new_m) {
+            settingsRouteName = result.new_m;
+            if (curRoute === settingsRouteName) curRoute = result.new_m;
+            refreshFileList();
+        }
+        
         currentRouteMeta = { name, description, visible, category };
         showToast('Метаданные сохранены', 'success');
     } catch (e) {
