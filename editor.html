@@ -748,7 +748,7 @@ const handleCreateNew = async () => {
     toggleM('createRouteModal');
     
     try {
-        await callYcFunction('save', { m: slug }, []);
+        await callYcFunction('save', { m: slug }, { data: [] });
         await callYcFunction('save_meta', { m: slug }, { name: name, description: '', visible: false, category: '' });
         refreshFileList(); 
         loadRoute(slug); 
@@ -801,7 +801,7 @@ const renameActiveRoute = async () => {
         
         // Сохраняем с новым именем
         const content = getResult.data || [];
-        await callYcFunction('save', { m: nextName }, content);
+        await callYcFunction('save', { m: nextName }, { data: content });
         
         // Удаляем старый
         await callYcFunction('delete', { m: curRoute });
@@ -1253,7 +1253,7 @@ async function saveGist() {
     if (topSaveBtn) { topSaveBtn.disabled = true; topSaveBtn.textContent = 'Сохраняем...'; }
     try {
         const data = points.map(p => ({ id: p.id, color: p.color, pts: p.pts, cmd: p.cmd, comm: p.comm }));
-        const result = await callYcFunction('save', { m: curRoute }, data);
+        const result = await callYcFunction('save', { m: curRoute }, { data });
         if(result && !result.error) {
             lastSavedSnapshot = serializePoints();
             btn.classList.remove('loading');

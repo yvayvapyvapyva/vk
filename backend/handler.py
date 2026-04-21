@@ -354,17 +354,20 @@ def handler(event, context):
             if not m_val:
                 return create_response(400, {'error': 'missing_route_name'})
 
-            try:
-                body_data = json.loads(body) if body else {}
-                new_json = body_data.get('data', [])
-                route_category = body_data.get('category', '')
-            except Exception as je:
-                return create_response(400, {'error': 'invalid_json_body', 'details': str(je)})
+            body_data = {}
+            if body:
+                try:
+                    body_data = json.loads(body)
+                except:
+                    body_data = {}
+
+            new_json = body_data.get('data', [])
+            route_category = body_data.get('category', '')
 
             try:
                 get_pool().retry_operation_sync(execute_upsert_route, id_param=user_id, m_param=m_val, json_data=new_json, category=route_category)
             except Exception as se:
-                raise
+                return create_response(500, {'error': 'save_failed', 'details': str(se)})
 
             return create_response(200, {'status': 'saved'})
 
