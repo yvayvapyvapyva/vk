@@ -354,10 +354,8 @@ def handler(event, context):
             if not m_val:
                 return create_response(400, {'error': 'missing_route_name'})
 
-            body_str = event.get('body', '{}')
-
             try:
-                body_data = json.loads(body_str) if body_str else {}
+                body_data = json.loads(body) if body else {}
                 new_json = body_data.get('data', [])
                 route_category = body_data.get('category', '')
             except Exception as je:
