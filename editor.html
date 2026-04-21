@@ -735,9 +735,9 @@ const generateSlug = (text) => {
         .split('')
         .map(char => ruToEn[char] || char)
         .join('')
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || 'route';
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '') || 'route';
 };
 
 const handleCreateNew = async () => {
