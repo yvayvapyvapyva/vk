@@ -247,7 +247,7 @@ const MenuModule = {
             const hasDesc = route.description && route.description.trim() !== '';
             html += `<button class="route-item" onclick="event.stopPropagation();MenuModule.selectRoute('${route.key}')">
                 <span class="route-name">${route.name}</span>
-                ${hasDesc ? `<span class="route-info-btn" onclick="event.stopPropagation();MenuModule._showRouteDescription('${routeKey}')">i</span>` : ''}
+                ${hasDesc ? `<span class="route-info-btn" onclick="event.stopPropagation();MenuModule._showRouteDescription('${routeKey}')">?</span>` : ''}
             </button>`;
         }
         
