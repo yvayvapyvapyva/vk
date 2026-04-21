@@ -79,7 +79,7 @@ def execute_list_user_routes(session, id_param):
     """Список маршрутов пользователя"""
     query = """
         DECLARE $id AS Utf8;
-        SELECT m, category FROM roads WHERE id = $id;
+        SELECT m, name, category FROM roads WHERE id = $id;
     """
     prepared_query = session.prepare(query)
     return session.transaction().execute(prepared_query, {'$id': str(id_param)}, commit_tx=True)
@@ -283,7 +283,7 @@ def handler(event, context):
         # Список маршрутов пользователя
         if action == 'list':
             result = get_pool().retry_operation_sync(execute_list_user_routes, id_param=user_id)
-            routes = [{'m': row.m, 'category': row.category if hasattr(row, 'category') and row.category else ''} for row in result[0].rows]
+            routes = [{'m': row.m, 'name': row.name if hasattr(row, 'name') and row.name else '', 'category': row.category if hasattr(row, 'category') and row.category else ''} for row in result[0].rows]
             return create_response(200, {'routes': routes})
 
         # Получение маршрута (защищенное)

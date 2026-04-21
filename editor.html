@@ -666,18 +666,19 @@ const renderSettingsFileList = () => {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#8b8f99;font-size:15px;">У вас пока нет маршрутов.<br>Создайте первый маршрут.</div>';
     } else {
         settingsRouteFiles.forEach(route => {
-            const routeName = typeof route === 'string' ? route : (route.m || '');
+            const routeKey = typeof route === 'string' ? route : (route.m || '');
+            const displayName = typeof route === 'string' ? route : (route.name || route.m || '');
             const item = document.createElement('div');
-            item.className = 'route-list-item' + (routeName === curRoute ? ' active' : '');
+            item.className = 'route-list-item' + (routeKey === curRoute ? ' active' : '');
             
             const nameBtn = document.createElement('button');
-            nameBtn.textContent = routeName;
+            nameBtn.textContent = displayName;
             nameBtn.style.cssText = 'flex:1;background:transparent;border:none;color:#fff;font-size:16px;font-weight:600;cursor:pointer;padding:14px 8px;margin:0;outline:none;width:100%;text-align:left;height:100%;';
             nameBtn.onclick = () => {
                 if (nameBtn.textContent === 'Загрузка...') return;
                 nameBtn.textContent = 'Загрузка...';
-                loadRoute(routeName).then(() => {
-                    nameBtn.textContent = routeName;
+                loadRoute(routeKey).then(() => {
+                    nameBtn.textContent = displayName;
                 });
             };
             
@@ -687,7 +688,7 @@ const renderSettingsFileList = () => {
             const settingsBtn = document.createElement('button');
             settingsBtn.innerHTML = '⚙️';
             settingsBtn.style.cssText = 'background:transparent;border:none;font-size:18px;cursor:pointer;padding:4px;';
-            settingsBtn.onclick = (e) => { e.stopPropagation(); openRouteSettings(routeName); };
+            settingsBtn.onclick = (e) => { e.stopPropagation(); openRouteSettings(routeKey); };
             
             settingsWrapper.appendChild(settingsBtn);
             item.appendChild(nameBtn);
@@ -821,9 +822,10 @@ let currentRouteMeta = { name: '', description: '', visible: false, category: ''
 
 const openRouteSettings = async (routeName) => {
     settingsRouteName = routeName;
-    $('settingsRouteTitle').textContent = `Маршрут "${routeName}"`;
     try {
         const meta = await callYcFunction('get_meta', { m: routeName });
+        const displayName = meta.name || routeName;
+        $('settingsRouteTitle').textContent = `Маршрут "${displayName}"`;
         currentRouteMeta = {
             name: meta.name || '',
             description: meta.description || '',
