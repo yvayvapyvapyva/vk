@@ -689,17 +689,6 @@ ymaps.ready(() => {
     $('loading').classList.add('hidden');
 
     document.addEventListener('click', function activateAudio() {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0.5;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = 800;
-        osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-        osc.stop(audioCtx.currentTime + 0.15);
-
         APP.navAudio.muted = true;
         APP.navAudio.play().catch(()=>{});
         APP.navAudio.pause();
