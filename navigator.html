@@ -699,6 +699,11 @@ ymaps.ready(() => {
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
         osc.stop(audioCtx.currentTime + 0.15);
+
+        APP.navAudio.muted = true;
+        APP.navAudio.play().catch(()=>{});
+        APP.navAudio.pause();
+        APP.navAudio.muted = false;
     }, { once: true });
 });
 </script>
